@@ -1,757 +1,532 @@
-"""Adaptive Affinity Propagation Clustering - Python translation of adapt_apcluster.m"""
-
-import os
 import numpy as np
-import pandas as pd
 
 
-# ============================================================================
-# Config
-# ============================================================================
-
-DATA_FILE = 'wine.txt'  # CSV or TXT
-DTYPE = 1              # 1=euclidean, 2=correlation
-DAMPFACT = 0.5         # damping factor
-MAXITS = 500
-CONVITS = 50
-PVALUES = None         # None = median
-FOLDS = 1
-ADAPT = 1              # 1=adaptive, 0=original AP
-PLOT = False
-DETAILS = False
-NONOISE = False
-CUT = 3                # drop clusters with < CUT samples
-TRUE_LABELS = 0        # 0=no true labels, 1=first column is true labels
-
-
-# ============================================================================
-# Similarity Functions
-# ============================================================================
+# ── Similarity helpers ─────────────────────────────────────────────────────────
 
 def similarity_euclid(data, squared=False):
-    """Pairwise Euclidean distances (or squared distances) between rows of data."""
-    data = np.asarray(data)
-    nrow = data.shape[0]
-    R = np.zeros((nrow, nrow))
-    dmax = 0.0
+    """
+    Pairwise Euclidean (or squared Euclidean) distance between rows of data.
 
-    for i in range(nrow - 1):
-        x = data[i]
-        for j in range(i + 1, nrow):
-            y = x - data[j]
-            d = np.sqrt(np.dot(y, y)) if not squared else np.dot(y, y)
-            R[i, j] = d
-            R[j, i] = d
-            if d > dmax:
-                dmax = d
-    return R, dmax
+    Parameters
+    ----------
+    data    : (N, d) ndarray
+    squared : bool — if True return squared distances
+
+    Returns
+    -------
+    R    : (N, N) distance matrix
+    dmax : float, maximum distance value
+    """
+    diff = data[:, np.newaxis, :] - data[np.newaxis, :, :]   # (N, N, d)
+    sq = np.einsum('ijk,ijk->ij', diff, diff)                 # (N, N)
+    if squared:
+        return sq, float(sq.max())
+    R = np.sqrt(sq)
+    return R, float(R.max())
 
 
 def similarity_pearson(data):
-    """Pearson correlation coefficients between every pair of columns."""
-    data = np.asarray(data)
-    nrow, ncol = data.shape
-    x = np.mean(data, axis=0)
-    data = data - np.tile(x, (nrow, 1))
-    R = np.ones((ncol, ncol))
+    """
+    Pearson correlation between every pair of rows in data.
 
-    for i in range(ncol - 1):
-        xi = data[:, i]
-        Xi = np.sqrt(np.dot(xi, xi))
-        for j in range(i + 1, ncol):
-            y = data[:, j]
-            xy = np.dot(xi, y)
-            Yi = np.sqrt(np.dot(y, y))
-            sim = xy / (Xi * Yi)
-            R[i, j] = sim
-            R[j, i] = sim
+    Parameters
+    ----------
+    data : (N, d) ndarray — rows are observations
+
+    Returns
+    -------
+    R : (N, N) correlation matrix in [-1, 1]
+    """
+    centered = data - data.mean(axis=1, keepdims=True)
+    norms = np.sqrt((centered ** 2).sum(axis=1, keepdims=True))
+    norms = np.where(norms == 0, 1e-10, norms)
+    normalized = centered / norms
+    R = normalized @ normalized.T
+    np.fill_diagonal(R, 1.0)
     return R
 
 
-# ============================================================================
-# Data Loading
-# ============================================================================
+# ── Main algorithm ─────────────────────────────────────────────────────────────
 
-def load_data(filepath, has_true_labels):
-    """Load data from CSV or TXT (space/tab/comma delimited)."""
-    ext = os.path.splitext(filepath)[1].lower()
+def adapt_apcluster(data, dtype='euclidean', pvalues=None, folds=0.01, adapt=1,
+                    maxits=500, convits=50, lam=0.5,
+                    plot=False, details=False, nonoise=False):
+    """
+    Adaptive Affinity Propagation clustering.
 
-    if ext == '.csv':
-        df = pd.read_csv(filepath, header=None, dtype=float)
-    else:
-        df = pd.read_csv(filepath, sep=None, header=None, dtype=float, engine='python')
+    Parameters
+    ----------
+    data    : ndarray
+              (N, d) raw data matrix,
+              OR (M, 3) pre-computed similarities as [i, j, s] with 1-based indices.
+    dtype   : 'euclidean' | 'correlation' | 1 | 2
+              Ignored when data is already in (M, 3) similarity format.
+    pvalues : float or (N,) ndarray, preference(s).
+              None → use median similarity × 0.5.
+    folds   : float, preference step factor (default 0.01).
+    adapt   : int, >0 for adaptive AP; 0 for original AP.
+    maxits  : int, maximum iterations.
+    convits : int, convergence window (iterations exemplars must stay fixed).
+    lam     : float, damping factor in [0.5, 1.0).
+    plot    : bool, print iteration info (matplotlib plotting not implemented).
+    details : bool, record per-iteration netsim/dpsim/expref/idx.
+    nonoise : bool, skip the small noise addition step.
 
-    df = df.fillna(0)
+    Returns
+    -------
+    labels  : (N, n_valid) int ndarray
+              Cluster assignment (1-based) for each valid K found.
+              Column j corresponds to NC[j] clusters.
+    NC      : (n_valid,) int ndarray, valid cluster counts discovered.
+    labelid : (N, n_valid) int ndarray
+              Exemplar index (1-based) for each point, per valid K.
+    it      : int, total iterations run.
+    Sp      : (n_valid,) float, preference value at each valid K.
+    Slam    : (n_valid,) float, damping factor at each valid K.
+    NCfix   : (n_valid,) int, confidence score per valid K (higher = more stable).
+    netsim  : float or ndarray, net similarity.
+    dpsim   : float or ndarray, discriminating similarity.
+    expref  : float or ndarray, sum of selected exemplar preferences.
+    idx     : (N,) or (N, T) int ndarray, 0-based exemplar assignment per point.
+    """
+    adapt = adapt + 1  # adapt=0 → original AP (adapt < 2); adapt>=1 → adaptive (adapt >= 2)
 
-    if has_true_labels:
-        true_labels = df.iloc[:, 0].astype(int).values
-        data = df.iloc[:, 1:].values
-    else:
-        true_labels = None
-        data = df.values
-
-    return data, true_labels
-
-
-# ============================================================================
-# Validation
-# ============================================================================
-
-def contingency_matrix(idx, true):
-    """Build contingency matrix."""
-    n_pred = int(np.max(idx))
-    n_true = int(np.max(true))
-    C = np.zeros((n_pred, n_true), dtype=int)
-    for i in range(len(idx)):
-        C[int(idx[i]) - 1, int(true[i]) - 1] += 1
-    return C
-
-
-def fowlkes_mallows(idx, true):
-    """Fowlkes-Mallows validity index."""
-    C = contingency_matrix(idx, true)
-    n = len(idx)
-    ni = np.sum(C, axis=1)
-    nj = np.sum(C, axis=0)
-    nis = np.sum(ni * (ni - 1) / 2)
-    njs = np.sum(nj * (nj - 1) / 2)
-    nij_c = C ** 2
-    sumC = np.sum(nij_c) - n
-    if nis == 0 or njs == 0:
-        return np.nan
-    FM = 0.5 * sumC / np.sqrt(nis * njs)
-    return FM
-
-
-def rand_index(idx, true):
-    """Rand index."""
-    C = contingency_matrix(idx, true)
-    n = len(idx)
-    ni = np.sum(C, axis=1)
-    nj = np.sum(C, axis=0)
-    nis = np.sum(ni * (ni - 1) / 2)
-    njs = np.sum(nj * (nj - 1) / 2)
-    ns = n * (n - 1) / 2
-    sumC = np.sum(C ** 2) - n
-    nij_sum = nis + njs
-    R = ns + sumC - nij_sum * 0.5
-    return R / ns
-
-
-def silhouette_score(data, labels):
-    """Silhouette coefficient."""
-    # Handle 2D labels array: take the last column (most recent/stable result)
-    if labels.ndim > 1:
-        labels = labels[:, -1]
-    n = len(labels)
-    unique_labels = np.unique(labels)
-    unique_labels = unique_labels[unique_labels != 0]
-    s = np.zeros(n)
-
-    for i in range(n):
-        label_i = labels[i]
-        if label_i == 0:
-            s[i] = 0
-            continue
-
-        in_cluster = np.where(labels == label_i)[0]
-        if len(in_cluster) > 1:
-            distances = np.sqrt(np.sum((data[i] - data[in_cluster]) ** 2, axis=1))
-            a_i = np.mean(distances)
+    # ── Build sparse similarity triplets [i, j, s] (1-based i, j) ────────────
+    if adapt < 2:
+        if dtype in ('euclidean', 1):
+            Dist, _ = similarity_euclid(data, squared=True)
         else:
-            a_i = 0
+            Dist = 1.0 - (1.0 + similarity_pearson(data)) / 2.0
 
-        b_i = np.inf
-        for lbl in unique_labels:
-            if lbl != label_i:
-                other_cluster = np.where(labels == lbl)[0]
-                if len(other_cluster) > 0:
-                    distances = np.sqrt(np.sum((data[i] - data[other_cluster]) ** 2, axis=1))
-                    b_i = min(b_i, np.mean(distances))
+        nrow = Dist.shape[0]
+        pairs = [(i, k) for i in range(nrow) for k in range(nrow) if i != k]
+        s = np.array([[i + 1, k + 1, -Dist[i, k]] for i, k in pairs], dtype=float)
+        Dist = None
+    else:
+        s = np.asarray(data, dtype=float).copy()
+        data = None
 
-        if b_i == np.inf:
-            b_i = 0
+    # ── Preference setup ──────────────────────────────────────────────────────
+    pfixed = False
+    valid_mask = s[:, 2] > -np.finfo(float).max
+    pmedian = float(np.median(s[valid_mask, 2]))
+    pstep_base = folds * pmedian
 
-        if max(a_i, b_i) > 0:
-            s[i] = (b_i - a_i) / max(a_i, b_i)
-        else:
-            s[i] = 0
+    pvalues_arr = np.atleast_1d(pvalues if pvalues is not None else pmedian * 0.5).astype(float)
+    if pvalues is not None:
+        pfixed = True
 
-    return np.mean(s)
+    if lam > 0.9:
+        print('\n*** Warning: Large damping factor in use. Consider increasing convits.\n')
 
+    # ── Validate input and build NxN similarity matrix S ─────────────────────
+    if s.shape[1] == 3:
+        tmp = int(max(s[:, 0].max(), s[:, 1].max()))
+        N = tmp if len(pvalues_arr) == 1 else len(pvalues_arr)
+        if tmp > N:
+            raise ValueError('data point index exceeds number of data points')
+        if min(s[:, 0].min(), s[:, 1].min()) <= 0:
+            raise ValueError('data point indices must be >= 1')
+        S = np.full((N, N), -np.inf)
+        rows = s[:, 0].astype(int) - 1
+        cols = s[:, 1].astype(int) - 1
+        S[rows, cols] = s[:, 2]
+    elif s.ndim == 2 and s.shape[0] == s.shape[1]:
+        N = s.shape[0]
+        if len(pvalues_arr) not in (1, N):
+            raise ValueError('pvalues must be scalar or length N')
+        S = s.copy()
+    else:
+        raise ValueError('s must have 3 columns or be square')
 
-# ============================================================================
-# Affinity Propagation Core
-# ============================================================================
+    s = None
 
-def apcluster_core(S, p_arr, N, lam, maxits, convits, nonoise, adapt):
-    """Core affinity propagation algorithm."""
+    if N > 3000:
+        print('\n*** Warning: Large memory request. Consider a sparse approach.\n')
+
+    # Small noise to break degeneracies
     if not nonoise:
-        rng_state = np.random.get_state()
+        rng = np.random.get_state()
         np.random.seed(0)
-        S = S + (np.finfo(float).eps * S + np.finfo(float).tiny * 100) * np.random.rand(N, N)
-        np.random.set_state(rng_state)
+        S += (np.finfo(float).eps * S + np.finfo(float).tiny * 100) * np.random.rand(N, N)
+        np.random.set_state(rng)
 
-    dS = np.diag(S)
+    # Set preferences on diagonal
+    if len(pvalues_arr) == 1:
+        np.fill_diagonal(S, float(pvalues_arr[0]))
+    else:
+        np.fill_diagonal(S, pvalues_arr)
+
+    # ── Allocate message matrices and history buffers ─────────────────────────
+    dS = np.diag(S).copy()
     A = np.zeros((N, N))
     R = np.zeros((N, N))
 
-    stoptimes = max(maxits // 10, 2000)
-    if adapt == 0:
-        stoptimes = convits
+    netsim_hist = dpsim_hist = expref_hist = idx_hist = None
+    if plot or details:
+        netsim_hist = np.full(maxits + 2, np.nan)
+    if details:
+        dpsim_hist  = np.full(maxits + 2, np.nan)
+        expref_hist = np.full(maxits + 2, np.nan)
+        idx_hist    = np.full((N, maxits + 2), -1, dtype=int)
 
-    Hstop = np.zeros((N, stoptimes), dtype=int)
-    Hconvits = np.zeros((N, convits), dtype=int)
-    Tdelay = 10
-    Hdelay = Tdelay
-    Hconverg = False
-    nhalf = round(0.3 * convits)
-    Hdelay2 = Tdelay
-    Hconvhalf = np.zeros((N, nhalf), dtype=int)
-    Hsavehalf = False
-    Hn1 = 0
-    Hn2 = 0
-    Kmean = 0
-    Wstart = max(100, round(convits / 2))
-    wsize = 40
-    Kocil = np.ones(wsize)
-    Noscil = float(wsize + 10)
-    Svib = 0
-    Hvib = 10
-    Tvib = 2
-    Hguid = 1
-    Sprefer = p_arr.copy()
-    astep = FOLDS * np.median(S[S > -np.finfo(float).max])
-    Kset = []
-    Kold = 0
-    Kfix = 0
-    nKfix = 0
-    Kmax = 0
-    nfix = 0
-
-    netsim_all = []
-    dpsim_all = []
-    expref_all = []
-    idx_all = []
-
-    iteration = 0
+    # ── State variables ───────────────────────────────────────────────────────
     dn = False
+    it = 0
+    stoptimes = convits if pfixed else max(maxits // 10, 2000)
 
+    Hstop     = np.zeros((N, stoptimes))
+    Hconvits  = np.zeros((N, convits))
+    nhalf     = max(1, round(0.3 * convits))
+    Hconvhalf = np.zeros((N, nhalf))
+
+    Tdelay   = 10
+    Hdelay   = Tdelay
+    Hdelay2  = Tdelay
+    Hconverg = False
+    Hsavehalf = False
+    Hn1 = 0;  Hn2 = 0
+
+    Wstart    = max(100, round(convits / 2))
+    wsize     = 40
+    Kocil     = np.ones(wsize, dtype=bool)
+    Noscil    = wsize + 10
+    Svib      = 0
+    Hvib      = 10;  Tvib = 2.0
+    Hguid     = 1
+
+    Sprefer   = float(pvalues_arr[0]) if len(pvalues_arr) == 1 else pvalues_arr.copy()
+    pstep     = pstep_base
+    astep     = pstep
+
+    buf = maxits + 20
+    Kset      = np.zeros(buf, dtype=int)
+    Kmean     = np.zeros(buf)
+    Kdown     = np.zeros(buf, dtype=bool)
+    Kunchange = np.zeros(buf)
+
+    Kold  = 0;  Kfix = 0;  nKfix = 0
+    Kmax  = 0;  nfix = 0
+    unconverged = False
+    newp  = float(np.atleast_1d(Sprefer)[0])
+    newlam = lam
+
+    tmpnetsim = tmpdpsim = tmpexpref = np.nan
+    tmpidx = np.full(N, -1, dtype=int)
+
+    # Output storage — columns indexed by (K - 1)
+    _cap = min(N, 512)
+    labels_out  = np.zeros((N, _cap), dtype=int)
+    labelid_out = np.zeros((N, _cap), dtype=int)
+    NC_out      = np.zeros(_cap, dtype=int)
+    NCfix_out   = np.zeros(_cap, dtype=int)
+    Sp_out      = np.zeros(_cap)
+    Slam_out    = np.zeros(_cap)
+
+    def _grow(k):
+        nonlocal labels_out, labelid_out, NC_out, NCfix_out, Sp_out, Slam_out
+        if k <= labels_out.shape[1]:
+            return
+        extra = k - labels_out.shape[1]
+        labels_out  = np.hstack([labels_out,  np.zeros((N, extra), dtype=int)])
+        labelid_out = np.hstack([labelid_out, np.zeros((N, extra), dtype=int)])
+        NC_out      = np.concatenate([NC_out,   np.zeros(extra, dtype=int)])
+        NCfix_out   = np.concatenate([NCfix_out, np.zeros(extra, dtype=int)])
+        Sp_out      = np.concatenate([Sp_out,   np.zeros(extra)])
+        Slam_out    = np.concatenate([Slam_out,  np.zeros(extra)])
+
+    def _set_sprefer(value):
+        if np.isscalar(Sprefer):
+            np.fill_diagonal(S, value)
+        else:
+            np.fill_diagonal(S, value)
+
+    # ── Main message-passing loop ─────────────────────────────────────────────
     while not dn:
-        iteration += 1
+        it += 1
 
-        # Responsibility pass
+        # Responsibilities  R(i,k) = S(i,k) - max_{j≠k}[A(i,j) + S(i,j)]
         AS = A + S
-        Y = np.max(AS, axis=1)
-        I = np.argmax(AS, axis=1)
-        for k in range(N):
-            AS[k, I[k]] = -np.finfo(float).max
-        Y2 = np.max(AS, axis=1)
-        AS = []
+        Y      = AS.max(axis=1)
+        I_max  = AS.argmax(axis=1)
+        AS[np.arange(N), I_max] = -np.finfo(float).max
+        Y2     = AS.max(axis=1)
+        AS     = None
+        Rold   = R
+        R      = S - Y[:, np.newaxis]
+        R[np.arange(N), I_max] = S[np.arange(N), I_max] - Y2
+        R      = (1 - lam) * R + lam * Rold
+        Rold   = None
 
-        Rold = R.copy()
-        R = S - Y[:, np.newaxis]
-        for k in range(N):
-            R[k, I[k]] = S[k, I[k]] - Y2[k]
-        R = (1 - lam) * R + lam * Rold
+        # Availabilities  A(i,k) = min(0, R(k,k) + Σ_{j≠i,k} max(0,R(j,k)))
+        Rp = np.maximum(R, 0.0)
+        Rp[np.arange(N), np.arange(N)] = R[np.arange(N), np.arange(N)]
+        Aold = A
+        A    = Rp.sum(axis=0)[np.newaxis, :] - Rp  # col sums broadcast minus Rp
+        Rp   = None
+        dA   = np.diag(A).copy()
+        np.minimum(A, 0.0, out=A)
+        A[np.arange(N), np.arange(N)] = dA
+        A    = (1 - lam) * A + lam * Aold
+        Aold = None
 
-        # Availability pass
-        Rp = np.maximum(R, 0)
-        for k in range(N):
-            Rp[k, k] = R[k, k]
-
-        Aold = A.copy()
-        A = np.tile(np.sum(Rp, axis=0), (N, 1)) - Rp
-        dA = np.diag(A)
-        A = np.minimum(A, 0)
-        for k in range(N):
-            A[k, k] = dA[k]
-        A = (1 - lam) * A + lam * Aold
-
-        # Convergence check
+        # Identify exemplars: point k is exemplar when diag(A)[k] + diag(R)[k] > 0
         E = (np.diag(A) + np.diag(R)) > 0
-        Hconvits[:, (iteration - 1) % convits] = E.astype(int)
-        K = int(E.sum())
-        Kset.append(K)
+        Hconvits[:, (it - 1) % convits]   = E
+        Hstop[:,    (it - 1) % stoptimes]  = E
+        Hconvhalf[:,(it - 1) % nhalf]      = E
 
-        if iteration > 5:
-            Kset_arr = np.array(Kset)
-            Kmean_arr = np.zeros(iteration)
-            for ii in range(6, iteration + 1):
-                Kmean_arr[ii - 1] = np.mean(Kset_arr[max(0, ii - 6):ii])
-            Kmean = Kmean_arr[iteration - 1]
+        K      = int(E.sum())
+        Kset[it] = K
+        newp   = float(np.atleast_1d(Sprefer)[0])
+        newlam = lam
 
-        Hstop[:, (iteration - 1) % stoptimes] = E.astype(int)
-        Hconvhalf[:, (iteration - 1) % nhalf] = E.astype(int)
-
-        if (iteration - 1) % 100 == 0 or iteration == maxits:
-            print(f'** running at iteration {iteration}, K = {K}')
+        if it % 100 == 1 or it == maxits:
+            print(f'** running at iteration {it}, K = {K}')
 
         Hsave = Hsave1 = Hsave2 = Hsave3 = False
 
-        if iteration >= Wstart or iteration >= maxits:
-            se = np.sum(Hconvits, axis=1)
-            se1 = int(np.sum(se == convits))
-            se2 = int(np.sum(se == 0))
-            unconverged = (se1 + se2) != N
-            Hconverg = not unconverged
+        # ── Convergence checks ────────────────────────────────────────────
+        if it >= Wstart or it >= maxits:
+            se = Hconvits.sum(axis=1)
+            unconverged = int((se == convits).sum() + (se == 0).sum()) != N
+            Hconverg    = not unconverged
 
-            se = np.sum(Hstop, axis=1)
-            se1 = int(np.sum(se == stoptimes))
-            se2 = int(np.sum(se == 0))
-            if (se1 + se2) == N or iteration == maxits:
-                dn = True
-                if (se1 + se2) == N:
-                    Hsave1 = True
+            se  = Hstop.sum(axis=1)
+            se1 = int((se == stoptimes).sum())
+            se2 = int((se == 0).sum())
+            if (se1 + se2) == N or it == maxits:
+                dn     = True
+                Hsave1 = (se1 + se2) == N
 
-            se = np.sum(Hconvhalf, axis=1)
-            se1 = int(np.sum(se == nhalf))
-            se2 = int(np.sum(se == 0))
+            se  = Hconvhalf.sum(axis=1)
+            se1 = int((se == nhalf).sum())
+            se2 = int((se == 0).sum())
             Hsavehalf = ((se1 + se2) == N) and (Hguid == 2)
 
-        # Adaptive preference reduction
-        if adapt:
-            if iteration > 5:
-                Kset_arr = np.array(Kset)
-                Kdown_arr = np.zeros(iteration)
-                for ii in range(7, iteration + 1):
-                    k_mean_ii = np.mean(Kset_arr[max(0, ii - 6):ii])
-                    k_mean_im1 = np.mean(Kset_arr[max(0, ii - 7):ii - 1])
-                    Kdown_arr[ii - 1] = k_mean_ii - k_mean_im1 < 0
-                Kdown = Kdown_arr[iteration - 1] if iteration - 1 < len(Kdown_arr) else False
+        # ── Adaptive mechanisms ───────────────────────────────────────────
+        if adapt >= 2:
+            if it > 5:
+                Kmean[it]     = Kset[it - 5:it + 1].mean()
+                Kdown[it]     = (Kmean[it] - Kmean[it - 1]) < 0
                 if Hguid == 2:
-                    Kdown = Kdown and (K <= Kold)
+                    Kdown[it] = Kdown[it] and (K <= Kold)
+                Kunchange[it] = int(np.abs(Kset[it] - Kset[it - 5:it]).sum())
+                Kocil[(it - 1) % wsize] = Kdown[it] or (Kunchange[it] == 0)
+                Noscil = int(Kocil.sum())
 
-                Kunchange = int(np.sum(np.abs(np.array(Kset[max(0, iteration - 6):iteration]) - Kset[iteration - 1])))
-                Kocil[(iteration - 1) % wsize] = Kdown or Kunchange == 0
-                Noscil = float(np.sum(Kocil))
-
+            # Reduce preference when K has converged
             if Hconverg:
                 Hdelay += 1
                 if Hdelay >= Tdelay:
-                    Hsave1 = True
-                    Hdelay = 0
-                    Hn1 += 1
-                    if K == Kfix:
-                        nKfix += 1
-                    else:
-                        nKfix = 0
-                    Kfix = K
-                    stepfold = np.sqrt(K + 50) / 10
-                    pstep = FOLDS * np.median(S[S > -np.finfo(float).max]) / stepfold
-                    astep = nKfix * pstep if nKfix > 1 else pstep
+                    Hsave1  = True
+                    Hdelay  = 0
+                    Hn1    += 1
+                    nKfix   = (nKfix + 1) if K == Kfix else 0
+                    Kfix    = K
+                    stepfold = np.sqrt(K + 50) / 10.0
+                    pstep   = folds * pmedian / stepfold
+                    astep   = nKfix * pstep if nKfix > 1 else pstep
             elif Hsavehalf:
                 Hdelay2 += 1
                 if Hdelay2 >= Tdelay:
-                    Hsave2 = True
+                    Hsave2  = True
                     Hdelay2 = 0
-                    Hn2 += 1
+                    Hn2    += 1
 
             if not Hconverg:
-                Hn1 = 0
-                Hdelay = 0
+                Hn1 = 0;  Hdelay = 0
             if not Hsavehalf:
-                Hn2 = 0
-                Hdelay2 = 0
+                Hn2 = 0;  Hdelay2 = 0
 
-            if K in (1, 2) and Hsave1:
-                dn = True
-                unconverged = False
+            if (K == 1 or K == 2) and Hsave1:
+                dn = True;  unconverged = False
 
+            # Transition to guidance phase
             if Hguid == 1 and Hsave1:
-                Hguid = 2
-                labels = np.zeros((N, K), dtype=int)
-                labelid = np.zeros((N, K), dtype=int)
-                NC = np.zeros(K)
-                NCfix = np.zeros(K)
-                Sp = np.zeros(K)
-                Slam = np.zeros(K)
-                Kmax = K
-                stepfold = np.sqrt(Kmax + 50) / 10
-                pstep = FOLDS * np.median(S[S > -np.finfo(float).max]) / stepfold
+                Hguid    = 2
+                Kmax     = K
+                stepfold = np.sqrt(Kmax + 50) / 10.0
+                pstep    = folds * pmedian / stepfold
 
             if Hsave1:
                 Svib = 0
-                Sprefer = Sprefer + astep
-                if Sprefer.size == 1:
-                    np.fill_diagonal(S, Sprefer[0])
-                else:
-                    for k in range(N):
-                        S[k, k] = Sprefer[k]
+                if not pfixed:
+                    Sprefer = np.atleast_1d(Sprefer) + astep
+                    Sprefer = float(Sprefer[0]) if Sprefer.size == 1 else Sprefer
+                    _set_sprefer(Sprefer)
             else:
                 Svib += 1
-                HSvib = (Svib > wsize and Noscil < 0.66 * wsize) or Svib > 150
-                HSvib = HSvib and iteration > Wstart
+                HSvib = ((Svib > wsize and Noscil < 0.66 * wsize) or Svib > 150) and it > Wstart
                 if HSvib:
                     Hvib += 1
                     if Hvib > 10:
                         lam = max(0.7, lam)
-                    elif Hvib >= 1:
+                    else:
                         if Tvib >= 3:
                             if lam >= 0.9:
                                 lam = min(0.98, 0.025 + lam)
-                                if lam >= 0.95 and (iteration - 1) % 9 == 2:
-                                    rng_state = np.random.get_state()
+                                if lam >= 0.95 and it % 9 == 2:
+                                    rng = np.random.get_state()
                                     np.random.seed(0)
-                                    S = S + (np.finfo(float).eps * S + np.finfo(float).tiny * 1000) * np.random.rand(N, N)
-                                    np.random.set_state(rng_state)
+                                    S += (np.finfo(float).eps * S + np.finfo(float).tiny * 1000) * np.random.rand(N, N)
+                                    np.random.set_state(rng)
                                     print(' # A small amount of noise is added')
                         else:
                             lam = min(0.9, 0.05 + lam)
+
                         if lam >= 0.85:
                             Tvib += 1
-                            Sprefer = Sprefer + astep
-                            if Sprefer.size == 1:
-                                np.fill_diagonal(S, Sprefer[0])
-                            else:
-                                for k in range(N):
-                                    S[k, k] = Sprefer[k]
-                            print(' # Escaping oscillation turns on')
-                    Hvib = 0
-                    Svib = 0
-                    print(f' # Damping factor is increased to {lam}')
+                            if not pfixed:
+                                if Hguid == 2 and Kold:
+                                    sf = 2.0 if Kmax < 1 else max(3.0 / (np.sqrt(Kmax) / 10 + 0.4), 1.0)
+                                    Kvar  = 2.0 * float(np.sqrt(np.std(Kset[max(1, it - 49):it + 1])))
+                                    astep = min(0.8 * Kvar + 0.2 * Tvib, sf) * pstep
+                                else:
+                                    astep = min(Tvib, 2.0) * pstep
+                                Sprefer = np.atleast_1d(Sprefer) + astep
+                                Sprefer = float(Sprefer[0]) if Sprefer.size == 1 else Sprefer
+                                _set_sprefer(Sprefer)
+                                print(' # Escaping oscillation turns on')
+
+                    Hvib = 0;  Svib = 0
+                    print(f' # Damping factor is increased to {lam:.4g}')
                 else:
                     Tvib = max(Tvib - 0.002, 0.98)
                     if lam > 0.9 and Tvib < 1:
                         lam = max(lam - 0.0001, 0.5)
 
-        newp = Sprefer[0] if Sprefer.size == 1 else Sprefer[-1]
-        newlam = lam
-
-        if Hguid >= 2 and (K < Kold and K > 1 or Kmean == np.mean(Kset[max(0, iteration - 2):iteration + 1])):
+        # Catch decreasing K
+        if Hguid >= 2 and it > 1 and ((K < Kold and K > 1) or Kmean[it] == Kmean[it - 1]):
             Hsave3 = True
-        if Hsave1 or Hsave2 or Hsave3:
-            Hsave = True
-        Kold = K
+        Hsave = Hsave1 or Hsave2 or Hsave3
+        Kold  = K
 
-        # Compute metrics
-        if K == 0:
-            tmpnetsim = np.nan
-            tmpdpsim = np.nan
-            tmpexpref = np.nan
-            tmpidx = np.full(N, np.nan)
-        else:
-            idx_E = np.where(E)[0]
-            S_col = S[:, idx_E]
-            tmp = np.argmax(S_col, axis=0)
-            c = np.zeros(len(idx_E), dtype=int)
-            c[:] = np.arange(1, K + 1)
-            c_map = np.zeros(N, dtype=int)
-            c_map[idx_E] = c
-
-            if Hsave or dn:
-                if Hsave1:
-                    nfix = Hn1 * Tdelay + convits
-                elif Hsave2:
-                    nfix = Hn2 * Tdelay + nhalf
-                elif Kmean == np.mean(Kset[max(0, iteration - 2):iteration + 1]):
-                    nfix = 6
-                    if iteration >= 6:
-                        k_mean_now = np.mean(Kset[max(0, iteration - 6):iteration + 1])
-                        if Kmean == k_mean_now:
-                            nfix = 10
-                else:
-                    nfix = 1
-
-                if (K <= Kmax and nfix > NCfix[K - 1]) or (K > Kmax and nfix >= 10):
-                    NCfix[K - 1] = nfix
-                    labels[:, K - 1] = c_map
-                    # Only assign labelid at exemplar positions (idx_E)
-                    labelid[idx_E, K - 1] = idx_E
-                    NC[K - 1] = K
-                    Sp[K - 1] = newp
-                    Slam[K - 1] = newlam
-                if K > Kmax:
-                    Kmax = K
-                    if len(NCfix) < K:
-                        NCfix = np.append(NCfix, 0)
-
-                # Compute tmpidx_i: for each point i, the exemplar it's assigned to
-                # c_map stores cluster position (1-indexed) for each exemplar point
-                # For non-exemplars, we need to find which exemplar their cluster uses
-                tmpidx_i = np.zeros(N, dtype=int)
-                # Exemplars map to themselves (0-indexed: idx_E[k] is the row index)
-                tmpidx_i[idx_E] = idx_E
-                # For non-exemplars: cluster = c_map[exemplar], need to find exemplar for that cluster
-                # c_map[j] = k+1 means exemplar j is at position k in idx_E
-                # So exemplar_of_cluster[k] = idx_E[k]
-                for i in range(N):
-                    if i not in idx_E:
-                        # Find which cluster point i belongs to by looking at the max similarity
-                        # Actually, for cluster assignment: point i's cluster = label from similarity pattern
-                        # Simpler: use argmax of S[i, idx_E] to find closest exemplar
-                        # But we need cluster label, not directly executable here
-                        # Since c_map only set for exemplars, use the fact that c_map[idx_E[k]] = k+1
-                        # For non-exemplar i, we need to find its cluster and then the exemplar for that cluster
-                        pass  # Keep existing tmpidx_i[i] = 0 for now - will be overwritten by the code below
-
-                # Correct approach: for each point i, find its closest exemplar in idx_E
-                S_to_exemplars = S[:, idx_E]  # N x K matrix of similarities to each exemplar
-                closest_exemplar_idx = np.argmax(S_to_exemplars, axis=1)  # Index into idx_E
-                tmpidx_i = idx_E[closest_exemplar_idx]  # Actual row indices in S
-
-                # Compute net similarity: sum S[i, tmpidx_i[i]] for each i
-                tmpnetsim = 0.0
-                for i in range(N):
-                    tmpnetsim += S[i, tmpidx_i[i]]
-
-                tmpexpref = np.sum(dS[idx_E])
-                tmpdpsim = tmpnetsim - tmpexpref
-                tmpidx = tmpidx_i
+        # ── Record / evaluate solution ────────────────────────────────────
+        if plot or details or Hsave or dn:
+            if K == 0:
+                tmpnetsim = tmpdpsim = tmpexpref = np.nan
+                tmpidx = np.full(N, -1, dtype=int)
             else:
-                # For each point i, find its closest exemplar
-                S_to_exemplars = S[:, idx_E]
-                closest_exemplar_idx = np.argmax(S_to_exemplars, axis=1)
-                tmpidx_i = idx_E[closest_exemplar_idx]
-                tmpnetsim = 0.0
-                for i in range(N):
-                    tmpnetsim += S[i, tmpidx_i[i]]
-                tmpexpref = np.sum(dS[idx_E])
-                tmpdpsim = tmpnetsim - tmpexpref
-                tmpidx = tmpidx_i
+                I_ex = np.where(E)[0]               # exemplar indices (0-based)
+                c    = S[:, I_ex].argmax(axis=1)    # each point → index into I_ex
+                c[I_ex] = np.arange(K)              # exemplars map to themselves
 
-        if DETAILS:
-            netsim_all.append(tmpnetsim)
-            dpsim_all.append(tmpdpsim)
-            expref_all.append(tmpexpref)
-            idx_all.append(tmpidx)
+                if Hsave or dn:
+                    # Compute confidence score for this K
+                    if Hsave1:
+                        nfix = Hn1 * Tdelay + convits
+                    elif Hsave2:
+                        nfix = Hn2 * Tdelay + nhalf
+                    elif it > 1 and Kmean[it] == Kmean[it - 1]:
+                        nfix = 10 if (it > 5 and Kmean[it] == Kmean[max(0, it - 5)]) else 6
+                    else:
+                        nfix = 1
 
-        if iteration >= maxits:
-            dn = True
+                    _grow(K)
+                    ki = K - 1  # 0-based column
+                    if (K <= Kmax and nfix > NCfix_out[ki]) or (K > Kmax and nfix >= 10):
+                        NCfix_out[ki]   = nfix
+                        labels_out[:,  ki] = c + 1          # 1-based cluster number
+                        labelid_out[:, ki] = I_ex[c] + 1    # 1-based exemplar index
+                        NC_out[ki]      = K
+                        Sp_out[ki]      = newp
+                        Slam_out[ki]    = newlam
+                    if K > Kmax:
+                        Kmax = K
+                else:
+                    tmpidx    = I_ex[c]
+                    tmpnetsim = float(S[np.arange(N), tmpidx].sum())
+                    tmpexpref = float(dS[I_ex].sum())
+                    tmpdpsim  = tmpnetsim - tmpexpref
 
+            if details:
+                netsim_hist[it]  = tmpnetsim
+                dpsim_hist[it]   = tmpdpsim
+                expref_hist[it]  = tmpexpref
+                if tmpidx is not None and not np.any(np.isnan(tmpidx.astype(float))):
+                    idx_hist[:, it] = tmpidx
+            elif plot:
+                netsim_hist[it] = tmpnetsim
+
+    # ── Final refinement: re-select best exemplar per cluster ─────────────────
     print(f' # Programs run over at K= {K}')
-    I_ex = np.where(np.diag(A + R) > 0)[0]
-    K = len(I_ex)
-    if K > 0:
-        # c should be size N (cluster assignment for each data point)
-        c = np.argmax(S[:, I_ex], axis=1)  # For each data point, which exemplar is closest
-        for k in range(K):
-            c[I_ex[k]] = k + 1  # Exemplar points get their cluster number
+    I_final = np.where((np.diag(A) + np.diag(R)) > 0)[0]
+    K_final = len(I_final)
 
-        # Refine: find actual exemplar for each cluster (point with max sum in cluster)
-        for k in range(K):
-            ii = np.where(c == k + 1)[0]
-            if len(ii) > 0:
-                sums = np.sum(S[np.ix_(ii, ii)], axis=1)
-                _, jm = np.max(sums), np.argmax(sums)
-                I_ex[k] = ii[jm]
+    if K_final > 0:
+        c_f = S[:, I_final].argmax(axis=1)
+        c_f[I_final] = np.arange(K_final)
+        for k in range(K_final):
+            ii    = np.where(c_f == k)[0]
+            j_b   = int(S[np.ix_(ii, ii)].sum(axis=0).argmax())
+            I_final[k] = ii[j_b]
+        c_f = S[:, I_final].argmax(axis=1)
+        c_f[I_final] = np.arange(K_final)
+        tmpidx    = I_final[c_f]
+        tmpnetsim = float(S[np.arange(N), tmpidx].sum())
+        tmpexpref = float(dS[I_final].sum())
+        tmpdpsim  = tmpnetsim - tmpexpref
 
-        # Recompute cluster assignments using updated I_ex
-        c = np.argmax(S[:, I_ex], axis=1)
-        for k in range(K):
-            c[I_ex[k]] = k + 1
-
-        tmpidx = I_ex[c - 1]
-        # Compute net similarity: sum of similarities from each point to its exemplar
-        tmpnetsim = 0.0
-        for i in range(N):
-            tmpnetsim += S[i, tmpidx[i]]
-        tmpexpref = np.sum(dS[I_ex])
-
-        labels_final = c
-        labelid_final = tmpidx
-        NC_final = K
-        NCfix_final = nfix
-        Sp_final = newp
-        Slam_final = newlam
-        dpsim_final = tmpnetsim - tmpexpref
+        _grow(K_final)
+        ki = K_final - 1
+        labels_out[:,  ki] = c_f + 1
+        labelid_out[:, ki] = tmpidx + 1
+        NC_out[ki]   = K_final
+        NCfix_out[ki] = nfix
+        Sp_out[ki]   = newp
+        Slam_out[ki] = newlam
     else:
-        tmpnetsim = np.nan
-        tmpexpref = np.nan
-        dpsim_final = np.nan
-        tmpidx = np.full(N, np.nan)
-        labels_final = np.full(N, 1)
-        labelid_final = np.full(N, 1)
-        NC_final = 0
-        NCfix_final = 0
-        Sp_final = np.array([])
-        Slam_final = np.array([])
+        tmpnetsim = tmpdpsim = tmpexpref = np.nan
+        tmpidx = np.full(N, -1, dtype=int)
 
-    netsim_out = np.array(netsim_all) if netsim_all else tmpnetsim
-    dpsim_out = np.array(dpsim_all) if dpsim_all else dpsim_final
-    expref_out = np.array(expref_all) if expref_all else tmpexpref
-    idx_out = np.array(idx_all) if idx_all else tmpidx
-
-    # Post-process
-    NC_arr = NC if 'NC' in dir() and NC.size > 0 else np.array([NC_final])
-    if NC_arr.size > 1:
-        NC_arr[0] = 0
-    valid_mask = NC_arr > 0
-    if NC_arr.size < 1 or (NC_arr.size == 1 and NC_arr[0] == 0):
-        if N is not None:
-            labels_final = np.ones(N, dtype=int)
-            labelid_final = np.ones(N, dtype=int)
-        Sp_final = np.array([])
-        Slam_final = np.array([])
-        NC_final = 0
-        NCfix_final = 0
+    # ── Package detail outputs ────────────────────────────────────────────────
+    if details:
+        netsim_hist[it + 1]  = tmpnetsim
+        dpsim_hist[it + 1]   = tmpdpsim
+        expref_hist[it + 1]  = tmpexpref
+        if not np.any(tmpidx == -1):
+            idx_hist[:, it + 1] = tmpidx
+        netsim_out = netsim_hist[:it + 2]
+        dpsim_out  = dpsim_hist[:it + 2]
+        expref_out = expref_hist[:it + 2]
+        idx_out    = idx_hist[:, :it + 2]
     else:
-        S_sel = np.where(valid_mask)[0]
-        Sp_final = Sp[S_sel] if 'Sp' in dir() and Sp.size > 0 else Sp_final
-        Slam_final = Slam[S_sel] if 'Slam' in dir() and Slam.size > 0 else Slam_final
-        labels_final = labels[:, S_sel] if 'labels' in dir() and labels.size > 0 else labels_final
-        labelid_final = labelid[:, S_sel] if 'labelid' in dir() and labelid.size > 0 else labelid_final
-        NCfix_final = NCfix[S_sel] if 'NCfix' in dir() and NCfix.size > 0 else NCfix_final
-        # NC_final is simply K (the number of clusters at the final iteration)
-        NC_final = K
+        netsim_out = tmpnetsim
+        dpsim_out  = tmpdpsim
+        expref_out = tmpexpref
+        idx_out    = tmpidx
 
-    if PLOT or DETAILS:
-        print(f'\nNumber of identified clusters: {K}')
-        print(f'Fitness (net similarity): {tmpnetsim}')
-        print(f'  Similarities of data points to exemplars: {dpsim_final}')
-        print(f'  Preferences of selected exemplars: {tmpexpref}')
-        print(f'Number of iterations: {iteration}\n')
+    # ── Trim to valid K values (MATLAB convention: zero out K=1 slot first) ───
+    if len(NC_out) > 1:
+        NC_out[0] = 0
 
-    if unconverged:
-        print(f'\n*** Warning: Algorithm did not converge at K = {NC_final} !')
-        print('    The similarities may contain degeneracies - add noise to')
-        print('    the similarities to remove degeneracies. To monitor the net')
-        print('    similarity, activate plotting. Also, consider increasing')
-        print('    maxits and if necessary dampfact.\n')
-
-    return (
-        labels_final,
-        int(NC_final) if isinstance(NC_final, (int, float, np.number)) else NC_final,
-        labelid_final,
-        iteration,
-        Sp_final,
-        Slam_final,
-        NCfix_final,
-        netsim_out,
-        dpsim_out,
-        expref_out,
-        idx_out,
-    )
-
-
-# ============================================================================
-# Main
-# ============================================================================
-
-def main():
-    print("=" * 60)
-    print(" Adaptive Affinity Propagation Clustering")
-    print("=" * 60)
-
-    # Load data
-    print(f"\n[1] Loading data: {DATA_FILE}")
-    if not os.path.exists(DATA_FILE):
-        print(f"ERROR: File not found: {DATA_FILE}")
-        print("Please update DATA_FILE in the config section.")
-        return
-
-    data, true_labels = load_data(DATA_FILE, TRUE_LABELS == 1)
-    print(f"    Data shape: {data.shape[0]} samples x {data.shape[1]} features")
-    if TRUE_LABELS == 1:
-        print(f"    True labels: {len(np.unique(true_labels))} clusters")
+    valid = np.where(NC_out)[0]
+    if len(valid) == 0:
+        labels_ret  = np.ones((N, 1), dtype=int)
+        labelid_ret = np.ones((N, 1), dtype=int)
+        NC_ret      = np.array([0], dtype=int)
+        NCfix_ret   = np.array([0], dtype=int)
+        Sp_ret      = np.array([])
+        Slam_ret    = np.array([])
     else:
-        print("    True labels: not provided")
+        labels_ret  = labels_out[:,  valid]
+        labelid_ret = labelid_out[:, valid]
+        NC_ret      = NC_out[valid]
+        NCfix_ret   = NCfix_out[valid]
+        Sp_ret      = Sp_out[valid]
+        Slam_ret    = Slam_out[valid]
 
-    # Compute similarity matrix
-    print(f"\n[2] Computing similarity ({'Euclidean' if DTYPE == 1 else 'Pearson'})")
-    if DTYPE == 1:
-        Dist, _ = similarity_euclid(data, squared=False)
-        S = -Dist
-    elif DTYPE == 2:
-        Dist = 1 - (1 + similarity_pearson(data)) / 2
-        S = -Dist
-    else:
-        print("ERROR: DTYPE must be 1 (euclidean) or 2 (correlation)")
-        return
+    if plot or details:
+        print(f'\nNumber of identified clusters: {K_final}')
+        if not np.isnan(tmpnetsim):
+            print(f'Fitness (net similarity): {tmpnetsim:.6f}')
+        print(f'Number of iterations: {it}\n')
 
-    N = data.shape[0]
-    # Parse pvalues
-    if PVALUES is None:
-        dn_mask = S[S > -np.finfo(float).max]
-        p_arr = np.array([np.median(dn_mask) * 0.5])
-    else:
-        p_arr = np.atleast_1d(PVALUES)
+    if unconverged and len(NC_ret) > 0:
+        print(f'\n*** Warning: Algorithm did not converge at K = {NC_ret[0]} !')
+        print('    Consider increasing maxits and if necessary dampfact.\n')
 
-    print(f"    Similarity matrix: {N}x{N}")
-
-    # Run clustering
-    print(f"\n[3] Running Adaptive Affinity Propagation Clustering")
-    print(f"    Damping: {DAMPFACT}, Max iterations: {MAXITS}, Convergence: {CONVITS}")
-    print(f"    Adaptive: {'Yes' if ADAPT else 'No'}, Cut: {CUT}")
-
-    labels, NC, labelid, iend, Sp, Slam, NCfix, netsim, dpsim, expref, idx_out = apcluster_core(
-        S, p_arr, N, DAMPFACT, MAXITS, CONVITS, NONOISE, ADAPT
-    )
-
-    # Extract final cluster assignments from labelid
-    # labelid stores exemplar index for each point in the last column
-    # We need to map exemplar indices to cluster labels (1, 2, 3, ...)
-    if labelid.ndim > 1:
-        final_exemplars = labelid[:, -1]  # exemplar index for each point
-        # Find unique exemplars and map to cluster labels
-        unique_exemplars = np.unique(final_exemplars)
-        unique_exemplars = unique_exemplars[unique_exemplars > 0]  # exclude 0
-        K_actual = len(unique_exemplars)
-        # Create mapping: exemplar -> cluster label (1, 2, 3, ...)
-        exemplar_to_cluster = {ex: i+1 for i, ex in enumerate(unique_exemplars)}
-        # Map each point to its cluster
-        labels = np.array([exemplar_to_cluster.get(ex, 0) for ex in final_exemplars])
-        NC = K_actual
-    else:
-        labels = labelid.copy() if np.ndim(labelid) == 1 else labelid[:, -1]
-
-    print(f"\n    Iterations: {iend}")
-    print(f"    Clusters found (before cut): {NC}")
-    print(f"    DEBUG: unique labels = {np.unique(labels)}, counts = {[np.sum(labels == l) for l in np.unique(labels)]}")
-
-    # Drop small clusters
-    if CUT > 1:
-        unique_labels = np.unique(labels)
-        valid_clusters = []
-        for lbl in unique_labels:
-            if lbl == 0:
-                continue
-            count = np.sum(labels == lbl)
-            if count >= CUT:
-                valid_clusters.append(lbl)
-        valid_clusters = np.array(valid_clusters)
-        print(f"    DEBUG: valid_clusters = {valid_clusters}")
-
-        if len(valid_clusters) > 0:
-            new_labels = np.zeros_like(labels)
-            for new_idx, old_lbl in enumerate(valid_clusters, start=1):
-                new_labels[labels == old_lbl] = new_idx
-            labels = new_labels
-            NC = len(valid_clusters)
-        else:
-            labels = np.zeros_like(labels)
-            NC = 0
-        print(f"    Clusters found (after cut={CUT}): {NC}")
-
-    # Validation
-    print(f"\n[4] Validation")
-    if TRUE_LABELS == 1 and true_labels is not None:
-        fm = fowlkes_mallows(labels, true_labels)
-        ri = rand_index(labels, true_labels)
-        print(f"    Fowlkes-Mallows Index: {fm:.4f}")
-        print(f"    Rand Index: {ri:.4f}")
-
-    sil = silhouette_score(data, labels)
-    print(f"    Silhouette Score: {sil:.4f}")
-
-    # Results
-    print(f"\n[5] Results Summary")
-    print(f"    Number of clusters: {NC}")
-    print(f"    Net similarity: {netsim:.4f}" if isinstance(netsim, (int, float, np.number)) and not np.isnan(netsim) else f"    Net similarity: {netsim}")
-
-    # Save labels
-    output_file = os.path.splitext(DATA_FILE)[0] + '_labels.csv'
-    labels_df = pd.DataFrame({
-        'sample_id': np.arange(1, N + 1),
-        'cluster_label': labels
-    })
-    labels_df.to_csv(output_file, index=False)
-    print(f"\n    Labels saved to: {output_file}")
-
-    print("\n" + "=" * 60)
-    print(" Done")
-    print("=" * 60)
-
-
-if __name__ == '__main__':
-    main()
+    return (labels_ret, NC_ret, labelid_ret, it,
+            Sp_ret, Slam_ret, NCfix_ret,
+            netsim_out, dpsim_out, expref_out, idx_out)

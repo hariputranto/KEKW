@@ -452,7 +452,8 @@ while not dn:
         Hsavehalf = ((se1 + se2) == N) and (Hguid == 2)
 
     # ── Adaptive mechanisms ───────────────────────────────────────────────────
-    if adapt >= 2:
+    # MATLAB's `if adapt` is always True after the +1 increment (adapt ≥ 1).
+    if adapt >= 1:
         if it > 5:
             Kmean[it]     = Kset[it - 5:it + 1].mean()
             Kdown[it]     = (Kmean[it] - Kmean[it - 1]) < 0
@@ -523,7 +524,7 @@ while not dn:
                         if not pfixed:
                             if Hguid == 2 and Kold:
                                 sf    = 2.0 if Kmax < 1 else max(3.0 / (np.sqrt(Kmax) / 10 + 0.4), 1.0)
-                                Kvar  = 2.0 * float(np.sqrt(np.std(Kset[max(1, it - 49):it + 1])))
+                                Kvar  = 2.0 * float(np.sqrt(np.std(Kset[max(1, it - 49):it + 1], ddof=1)))
                                 astep = min(0.8 * Kvar + 0.2 * Tvib, sf) * pstep
                             else:
                                 astep = min(Tvib, 2.0) * pstep

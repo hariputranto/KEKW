@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.spatial.distance import cdist
 
 
 # ── Similarity helpers ─────────────────────────────────────────────────────────
@@ -17,11 +18,10 @@ def similarity_euclid(data, squared=False):
     R    : (N, N) distance matrix
     dmax : float, maximum distance value
     """
-    diff = data[:, np.newaxis, :] - data[np.newaxis, :, :]   # (N, N, d)
-    sq = np.einsum('ijk,ijk->ij', diff, diff)                 # (N, N)
+    R = cdist(data, data, metric='sqeuclidean')
     if squared:
-        return sq, float(sq.max())
-    R = np.sqrt(sq)
+        return R, float(R.max())
+    R = np.sqrt(R)
     return R, float(R.max())
 
 
@@ -37,11 +37,7 @@ def similarity_pearson(data):
     -------
     R : (N, N) correlation matrix in [-1, 1]
     """
-    centered = data - data.mean(axis=1, keepdims=True)
-    norms = np.sqrt((centered ** 2).sum(axis=1, keepdims=True))
-    norms = np.where(norms == 0, 1e-10, norms)
-    normalized = centered / norms
-    R = normalized @ normalized.T
+    R = np.corrcoef(data)
     np.fill_diagonal(R, 1.0)
     return R
 
@@ -98,10 +94,10 @@ def adapt_apcluster(data, dtype='euclidean', pvalues=None, folds=0.01, adapt=1,
         else:
             Dist = 1.0 - (1.0 + similarity_pearson(data)) / 2.0
 
-        nrow = Dist.shape[0]
-        pairs = [(i, k) for i in range(nrow) for k in range(nrow) if i != k]
-        s = np.array([[i + 1, k + 1, -Dist[i, k]] for i, k in pairs], dtype=float)
-        Dist = None
+        nrow   = Dist.shape[0]
+        r, c   = np.where(~np.eye(nrow, dtype=bool))
+        s      = np.column_stack([r + 1, c + 1, -Dist[r, c]]).astype(float)
+        Dist   = None
     else:
         s = np.asarray(data, dtype=float).copy()
         data = None
@@ -208,8 +204,6 @@ def adapt_apcluster(data, dtype='euclidean', pvalues=None, folds=0.01, adapt=1,
     Kold  = 0;  Kfix = 0;  nKfix = 0
     Kmax  = 0;  nfix = 0
     unconverged = False
-    newp  = float(np.atleast_1d(Sprefer)[0])
-    newlam = lam
 
     tmpnetsim = tmpdpsim = tmpexpref = np.nan
     tmpidx = np.full(N, -1, dtype=int)
@@ -235,11 +229,10 @@ def adapt_apcluster(data, dtype='euclidean', pvalues=None, folds=0.01, adapt=1,
         Sp_out      = np.concatenate([Sp_out,   np.zeros(extra)])
         Slam_out    = np.concatenate([Slam_out,  np.zeros(extra)])
 
-    def _set_sprefer(value):
-        if np.isscalar(Sprefer):
-            np.fill_diagonal(S, value)
-        else:
-            np.fill_diagonal(S, value)
+    # Cache float-info constants — avoids repeated object construction inside the hot loop
+    _FMAX  = np.finfo(float).max
+    _FEPS  = np.finfo(float).eps
+    _FTINY = np.finfo(float).tiny
 
     # ── Main message-passing loop ─────────────────────────────────────────────
     while not dn:
@@ -249,7 +242,7 @@ def adapt_apcluster(data, dtype='euclidean', pvalues=None, folds=0.01, adapt=1,
         AS = A + S
         Y      = AS.max(axis=1)
         I_max  = AS.argmax(axis=1)
-        AS[np.arange(N), I_max] = -np.finfo(float).max
+        AS[np.arange(N), I_max] = -_FMAX
         Y2     = AS.max(axis=1)
         AS     = None
         Rold   = R
@@ -270,8 +263,7 @@ def adapt_apcluster(data, dtype='euclidean', pvalues=None, folds=0.01, adapt=1,
         A    = (1 - lam) * A + lam * Aold
         Aold = None
 
-        # Identify exemplars: point k is exemplar when diag(A)[k] + diag(R)[k] > 0
-        E = (np.diag(A) + np.diag(R)) > 0
+        E = (np.einsum('ii->i', A) + np.einsum('ii->i', R)) > 0
         Hconvits[:, (it - 1) % convits]   = E
         Hstop[:,    (it - 1) % stoptimes]  = E
         Hconvhalf[:,(it - 1) % nhalf]      = E
@@ -354,7 +346,7 @@ def adapt_apcluster(data, dtype='euclidean', pvalues=None, folds=0.01, adapt=1,
                 if not pfixed:
                     Sprefer = np.atleast_1d(Sprefer) + astep
                     Sprefer = float(Sprefer[0]) if Sprefer.size == 1 else Sprefer
-                    _set_sprefer(Sprefer)
+                    np.fill_diagonal(S, Sprefer)
             else:
                 Svib += 1
                 HSvib = ((Svib > wsize and Noscil < 0.66 * wsize) or Svib > 150) and it > Wstart
@@ -369,7 +361,7 @@ def adapt_apcluster(data, dtype='euclidean', pvalues=None, folds=0.01, adapt=1,
                                 if lam >= 0.95 and it % 9 == 2:
                                     rng = np.random.get_state()
                                     np.random.seed(0)
-                                    S += (np.finfo(float).eps * S + np.finfo(float).tiny * 1000) * np.random.rand(N, N)
+                                    S += (_FEPS * S + _FTINY * 1000) * np.random.rand(N, N)
                                     np.random.set_state(rng)
                                     print(' # A small amount of noise is added')
                         else:
@@ -386,7 +378,7 @@ def adapt_apcluster(data, dtype='euclidean', pvalues=None, folds=0.01, adapt=1,
                                     astep = min(Tvib, 2.0) * pstep
                                 Sprefer = np.atleast_1d(Sprefer) + astep
                                 Sprefer = float(Sprefer[0]) if Sprefer.size == 1 else Sprefer
-                                _set_sprefer(Sprefer)
+                                np.fill_diagonal(S, Sprefer)
                                 print(' # Escaping oscillation turns on')
 
                     Hvib = 0;  Svib = 0
@@ -451,7 +443,7 @@ def adapt_apcluster(data, dtype='euclidean', pvalues=None, folds=0.01, adapt=1,
 
     # ── Final refinement: re-select best exemplar per cluster ─────────────────
     print(f' # Programs run over at K= {K}')
-    I_final = np.where((np.diag(A) + np.diag(R)) > 0)[0]
+    I_final = np.where((np.einsum('ii->i', A) + np.einsum('ii->i', R)) > 0)[0]
     K_final = len(I_final)
 
     if K_final > 0:

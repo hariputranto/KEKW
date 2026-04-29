@@ -1,6 +1,7 @@
 import os
 import re
 import time
+import random
 import pandas as pd
 import requests
 
@@ -12,7 +13,7 @@ import requests
 input_file  = 'places.csv'          # .csv or .xlsx input file
 url_column  = 'google_maps_link'    # column name that holds the Google Maps URLs
 output_file = 'places_coords.csv'   # output path (.csv or .xlsx); '' = overwrite input
-delay       = 0.5                   # seconds to wait between HTTP requests
+delay       = (15, 30)              # random delay range in seconds between HTTP requests
 
 # ═════════════════════════════════════════════════════════════════════════════
 # HELPERS
@@ -59,7 +60,7 @@ def _parse(url):
     return None, None
 
 
-def extract_coords(url, session, delay_s=0.5):
+def extract_coords(url, session, delay_s=(15, 30)):
     """
     Extract (lat, lng) from a Google Maps URL.
 
@@ -91,7 +92,8 @@ def extract_coords(url, session, delay_s=0.5):
         except requests.exceptions.RequestException:
             return None, None
 
-    time.sleep(delay_s)
+    wait = random.uniform(*delay_s) if isinstance(delay_s, tuple) else delay_s
+    time.sleep(wait)
     return _parse(resolved)
 
 
@@ -107,8 +109,21 @@ if url_column not in df.columns:
         f'Available columns: {list(df.columns)}'
     )
 
+_USER_AGENTS = [
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:125.0) Gecko/20100101 Firefox/125.0',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4.1 Safari/605.1.15',
+    'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+]
+
 session = requests.Session()
-session.headers.update({'User-Agent': 'Mozilla/5.0'})
+session.headers.update({
+    'User-Agent'     : random.choice(_USER_AGENTS),
+    'Accept'         : 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+    'Accept-Language': 'en-US,en;q=0.9',
+    'Accept-Encoding': 'gzip, deflate, br',
+    'Referer'        : 'https://www.google.com/',
+})
 
 lats, lngs = [], []
 n = len(df)

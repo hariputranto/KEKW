@@ -228,6 +228,37 @@ def valid_errorate(labels, truelabels):
     return Rerror
 
 
+def load_data(filepath):
+    """
+    Load a data file and return an (N, d) float ndarray.
+
+    CSV files (.csv)
+        Header rows and non-numeric columns (e.g. ID, class label) are
+        detected and dropped automatically.  Requires pandas.
+
+    Other files (.txt, etc.)
+        Loaded with numpy.loadtxt (whitespace-delimited, no header).
+
+    Parameters
+    ----------
+    filepath : str — path to the file
+    """
+    import os
+    if os.path.splitext(filepath)[1].lower() == '.csv':
+        import pandas as pd
+        df = pd.read_csv(filepath, header=None)
+        try:
+            return df.to_numpy(dtype=float)
+        except (ValueError, TypeError):
+            # First row is a header, or file has non-numeric columns
+            df = pd.read_csv(filepath)
+            df = df.select_dtypes(include='number')
+            if df.empty:
+                raise ValueError(f'No numeric columns found in {filepath!r}')
+            return df.to_numpy(dtype=float)
+    return np.loadtxt(filepath)
+
+
 def plot_clusters(data, labels, labelid, title='Adaptive AP Clustering'):
     """
     Scatter plot of a clustering result.
@@ -267,7 +298,7 @@ def plot_clusters(data, labels, labelid, title='Adaptive AP Clustering'):
     else:
         palette = [plt.get_cmap('hsv')(i / K) for i in range(K)]
 
-    fig, ax = plt.subplots(figsize=(8, 6))
+    _, ax = plt.subplots(figsize=(8, 6))
 
     for k in range(1, K + 1):
         color   = palette[k - 1]
@@ -315,7 +346,7 @@ def plot_clusters(data, labels, labelid, title='Adaptive AP Clustering'):
 # PARAMETERS — edit these before running
 # ═════════════════════════════════════════════════════════════════════════════
 
-data        = np.loadtxt('wine.txt')   # (N, d) data matrix
+data        = load_data('wine.txt')    # supports .csv (auto-detects header) or whitespace .txt
 dtype       = 'euclidean'              # 'euclidean' | 'correlation'
 pvalues     = None                     # None = median similarity × 0.5; or float/array
 folds       = 0.01                     # preference step factor

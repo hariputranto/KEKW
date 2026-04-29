@@ -259,7 +259,8 @@ def load_data(filepath):
     return np.loadtxt(filepath)
 
 
-def plot_clusters(data, labels, labelid, title='Adaptive AP Clustering'):
+def plot_clusters(data, labels, labelid, title='Adaptive AP Clustering',
+                  save_path=''):
     """
     Scatter plot of a clustering result.
 
@@ -270,10 +271,11 @@ def plot_clusters(data, labels, labelid, title='Adaptive AP Clustering'):
 
     Parameters
     ----------
-    data    : (N, d) raw data matrix
-    labels  : (N,)  1-based integer cluster labels
-    labelid : (N,)  1-based exemplar index for each point
-    title   : str, figure title prefix
+    data      : (N, d) raw data matrix
+    labels    : (N,)  1-based integer cluster labels
+    labelid   : (N,)  1-based exemplar index for each point
+    title     : str, figure title prefix
+    save_path : str, file path to save the figure (e.g. 'plot.png'); '' to skip
     """
     N, d = data.shape
 
@@ -339,6 +341,9 @@ def plot_clusters(data, labels, labelid, title='Adaptive AP Clustering'):
     ax.set_ylabel(ax_labels[1])
     ax.set_title(f'{title}  (K={K}{pca_note})')
     plt.tight_layout()
+    if save_path:
+        plt.savefig(save_path, dpi=150, bbox_inches='tight')
+        print(f'\n## Plot saved to: {save_path}')
     plt.show()
 
 
@@ -361,6 +366,8 @@ cut         = 3                        # minimum cluster size (drop smaller)
 simatrix    = False                    # True if 'data' is a (M,3) similarity matrix
 M           = None                     # pre-computed similarity triplets (if simatrix=True)
 truelabels  = None                     # (N,) true labels for validation, or None
+output_csv  = 'ap_results.csv'         # path for result CSV; set to '' to skip
+output_plot = 'ap_clusters.png'        # path for cluster plot; set to '' to skip (supports .png .pdf .svg)
 
 # ═════════════════════════════════════════════════════════════════════════════
 # STEP 1 — ADAPTIVE AFFINITY PROPAGATION
@@ -847,4 +854,30 @@ if truelabels is not None:
 # Skipped when input was a pre-computed similarity matrix (no raw coordinates).
 
 if not simatrix:
-    plot_clusters(_raw_data, optimal_labels, labelid[:, Sid])
+    plot_clusters(_raw_data, optimal_labels, labelid[:, Sid], save_path=output_plot)
+
+# ═════════════════════════════════════════════════════════════════════════════
+# STEP 6 — EXPORT RESULTS TO CSV
+# ═════════════════════════════════════════════════════════════════════════════
+
+if output_csv:
+    import os, pandas as pd
+
+    # A point is a centre when its own index equals the exemplar index stored in labelid
+    is_centre    = (labelid[:, Sid] - 1) == np.arange(nrow)
+    centre_index = labelid[:, Sid]          # 1-based index of this point's cluster centre
+
+    if not simatrix:
+        n_feat  = _raw_data.shape[1]
+        df_out  = pd.DataFrame(_raw_data,
+                               columns=[f'feature_{i + 1}' for i in range(n_feat)])
+    else:
+        df_out  = pd.DataFrame()
+
+    df_out['cluster']       = optimal_labels   # 1-based cluster id
+    df_out['is_centre']     = is_centre        # True for the exemplar of each cluster
+    df_out['centre_index']  = centre_index     # 1-based row index of this cluster's centre
+
+    df_out.index.name = 'point_index'
+    df_out.to_csv(output_csv)
+    print(f'\n## Results saved to: {os.path.abspath(output_csv)}')

@@ -1,5 +1,8 @@
 import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
 from scipy.spatial.distance import cdist
+from sklearn.decomposition import PCA
 from sklearn.metrics import silhouette_samples
 from sklearn.metrics.cluster import contingency_matrix as _sklearn_contingency
 
@@ -223,6 +226,89 @@ def valid_errorate(labels, truelabels):
     Rerror = 100.0 * diff.sum() / nrow
     print(f'  Error rate for all data: {Rerror:.2f}%')
     return Rerror
+
+
+def plot_clusters(data, labels, labelid, title='Adaptive AP Clustering'):
+    """
+    Scatter plot of a clustering result.
+
+    Points are coloured by cluster.  Each cluster centre (exemplar) is drawn
+    as a large star with a black edge.  Thin lines connect every member to its
+    centre.  Data with more than 2 features is projected to 2-D via PCA before
+    plotting.
+
+    Parameters
+    ----------
+    data    : (N, d) raw data matrix
+    labels  : (N,)  1-based integer cluster labels
+    labelid : (N,)  1-based exemplar index for each point
+    title   : str, figure title prefix
+    """
+    N, d = data.shape
+
+    if d > 2:
+        coords    = PCA(n_components=2).fit_transform(data)
+        ax_labels = ('PC 1', 'PC 2')
+        pca_note  = '  [PCA projection]'
+    elif d == 2:
+        coords    = data.astype(float)
+        ax_labels = ('Feature 1', 'Feature 2')
+        pca_note  = ''
+    else:
+        coords    = np.column_stack([data[:, 0].astype(float), np.zeros(N)])
+        ax_labels = ('Feature 1', '')
+        pca_note  = ''
+
+    K = int(labels.max())
+    if K <= 10:
+        palette = [plt.get_cmap('tab10')(i) for i in range(K)]
+    elif K <= 20:
+        palette = [plt.get_cmap('tab20')(i) for i in range(K)]
+    else:
+        palette = [plt.get_cmap('hsv')(i / K) for i in range(K)]
+
+    fig, ax = plt.subplots(figsize=(8, 6))
+
+    for k in range(1, K + 1):
+        color   = palette[k - 1]
+        mask    = labels == k
+        ctr_idx = int(labelid[mask][0]) - 1   # 0-based exemplar index for this cluster
+
+        cx, cy = coords[ctr_idx]
+
+        # thin lines: each member → its centre
+        for xi, yi in coords[mask]:
+            ax.plot([xi, cx], [yi, cy], color=color, lw=0.5, alpha=0.35, zorder=1)
+
+        # member points
+        ax.scatter(coords[mask, 0], coords[mask, 1],
+                   c=[color], s=45, zorder=2)
+
+        # centre / exemplar marker (star, same colour, black edge)
+        ax.scatter(cx, cy, c=[color], s=260, marker='*',
+                   edgecolors='black', linewidths=0.8, zorder=3)
+
+    # Legend — marker-type key always shown; per-cluster colour swatches when K is small
+    legend_handles = [
+        Line2D([0], [0], marker='o', color='0.4', linestyle='None',
+               markersize=7, label='Member'),
+        Line2D([0], [0], marker='*', color='0.4', linestyle='None',
+               markersize=13, markeredgecolor='black', label='Centre (exemplar)'),
+    ]
+    if K <= 12:
+        for k in range(1, K + 1):
+            legend_handles.append(
+                Line2D([0], [0], marker='o', color=palette[k - 1],
+                       linestyle='None', markersize=7, label=f'Cluster {k}')
+            )
+    ax.legend(handles=legend_handles, loc='best', fontsize=8,
+              ncol=2 if K > 6 else 1)
+
+    ax.set_xlabel(ax_labels[0])
+    ax.set_ylabel(ax_labels[1])
+    ax.set_title(f'{title}  (K={K}{pca_note})')
+    plt.tight_layout()
+    plt.show()
 
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -723,3 +809,11 @@ if truelabels is not None:
 
     print(f'\n## Error rate (optimal K={NCopt}):')
     valid_errorate(optimal_labels, truelabels)
+
+# ═════════════════════════════════════════════════════════════════════════════
+# STEP 5 — VISUALIZATION
+# ═════════════════════════════════════════════════════════════════════════════
+# Skipped when input was a pre-computed similarity matrix (no raw coordinates).
+
+if not simatrix:
+    plot_clusters(_raw_data, optimal_labels, labelid[:, Sid])

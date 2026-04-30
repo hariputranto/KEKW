@@ -13,7 +13,7 @@ import requests
 input_file  = 'places.csv'          # .csv or .xlsx input file
 url_column  = 'google_maps_link'    # column name that holds the Google Maps URLs
 output_file = 'places_coords.csv'   # output path (.csv or .xlsx); '' = overwrite input
-delay       = (15, 30)              # random delay range in seconds between HTTP requests
+delay       = (5, 30)              # random delay range in seconds between HTTP requests
 
 # ═════════════════════════════════════════════════════════════════════════════
 # HELPERS
@@ -49,6 +49,54 @@ _PATTERNS = [
     # @lat,lng fallback (no leading slash)
     (r'@(-?\d+\.\d+),(-?\d+\.\d+)', 1, 2),
 ]
+
+
+_GMAPS_HINTS = re.compile(
+    r'(maps\.google\.com|google\.com/maps|maps\.app\.goo\.gl|goo\.gl/maps)',
+    re.IGNORECASE,
+)
+
+
+def _find_url_column(df, hint):
+    """
+    Resolve which column holds Google Maps URLs.
+
+    Resolution order:
+      1. Exact match on `hint`.
+      2. Case-insensitive name match.
+      3. Content scan — return the string column whose first 20 non-null
+         values contain the most Google Maps URLs.
+
+    Raises ValueError if nothing is found.
+    """
+    # 1. Exact match
+    if hint in df.columns:
+        return hint
+
+    # 2. Case-insensitive name match
+    lower_hint = hint.lower()
+    for col in df.columns:
+        if col.lower() == lower_hint:
+            print(f'Column {hint!r} not found; using {col!r} (case-insensitive match).')
+            return col
+
+    # 3. Content scan
+    best_col, best_score = None, 0
+    for col in df.columns:
+        sample = df[col].dropna().astype(str).head(20)
+        score  = sample.apply(lambda v: bool(_GMAPS_HINTS.search(v))).sum()
+        if score > best_score:
+            best_score, best_col = score, col
+
+    if best_col and best_score > 0:
+        print(f'Column {hint!r} not found; auto-detected {best_col!r} '
+              f'({best_score} Google Maps URL(s) found in sample).')
+        return best_col
+
+    raise ValueError(
+        f'Could not find a Google Maps URL column in {df.columns.tolist()}.\n'
+        f'Set url_column to the correct column name.'
+    )
 
 
 def _parse(url):
@@ -103,11 +151,7 @@ def extract_coords(url, session, delay_s=(15, 30)):
 
 df = load_file(input_file)
 
-if url_column not in df.columns:
-    raise ValueError(
-        f'Column {url_column!r} not found in {input_file!r}.\n'
-        f'Available columns: {list(df.columns)}'
-    )
+url_column = _find_url_column(df, url_column)
 
 _USER_AGENTS = [
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
@@ -129,6 +173,13 @@ lats, lngs = [], []
 n = len(df)
 
 for i, url in enumerate(df[url_column], start=1):
+    is_empty = not isinstance(url, str) or not str(url).strip()
+    if is_empty:
+        lats.append(None)
+        lngs.append(None)
+        print(f'[{i}/{n}] SKIP  (no link)')
+        continue
+
     lat, lng = extract_coords(url, session, delay)
     lats.append(lat)
     lngs.append(lng)
@@ -148,6 +199,8 @@ df['longlat'] = [
 out = output_file if output_file else input_file
 save_file(df, out)
 
-failed = sum(1 for v in lats if v is None)
-print(f'\n{n - failed}/{n} coordinates extracted successfully.')
+skipped = sum(1 for v, url in zip(lats, df[url_column])
+              if v is None and (not isinstance(url, str) or not str(url).strip()))
+failed  = sum(1 for v in lats if v is None) - skipped
+print(f'\n{n - skipped - failed}/{n} extracted  |  {skipped} skipped (no link)  |  {failed} failed.')
 print(f'Results saved to: {os.path.abspath(out)}')

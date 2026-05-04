@@ -10,10 +10,10 @@ import requests
 # PARAMETERS — edit these before running
 # ═════════════════════════════════════════════════════════════════════════════
 
-input_file  = 'places.csv'          # .csv or .xlsx input file
-url_column  = 'google_maps_link'    # column name that holds the Google Maps URLs
-output_file = 'places_coords.csv'   # output path (.csv or .xlsx); '' = overwrite input
-delay       = (5, 30)              # random delay range in seconds between HTTP requests
+input_file  = 'DestinasiPP88.xlsx'          # .csv or .xlsx input file
+url_column  = 'Maps_Link'    # column name that holds the Google Maps URLs
+output_file = 'DestinasiPP88_coords.csv'   # output path (.csv or .xlsx); '' = overwrite input
+delay       = (5, 10)              # random delay range in seconds between HTTP requests
 
 # ═════════════════════════════════════════════════════════════════════════════
 # HELPERS

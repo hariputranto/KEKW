@@ -15,6 +15,7 @@ K. Wang, J. Zhang, D. Li, X. Zhang and T. Guo. *Adaptive Affinity Propagation Cl
 | `adapt_apcluster.py` | Importable module — core algorithm only |
 | `adapt_apcluster_script.py` | Standalone script — full pipeline with CSV input, visualization, and result export |
 | `extract_coords.py` | Utility script — extracts lat/long from Google Maps links in a CSV/Excel file |
+| `export_similarity.py` | Utility script — computes and exports the N×N similarity matrix |
 | `adapt_apcluster.m` | Original MATLAB source |
 | `wine.txt` / `ionosphere.txt` | Demo datasets |
 
@@ -23,19 +24,19 @@ K. Wang, J. Zhang, D. Li, X. Zhang and T. Guo. *Adaptive Affinity Propagation Cl
 ## Requirements
 
 ```
-numpy
-scipy
-pandas
-scikit-learn
-matplotlib
-requests
-openpyxl   # only needed for .xlsx input/output
+numpy==2.4.4
+scipy==1.17.1
+pandas==3.0.2
+scikit-learn==1.8.0
+matplotlib==3.10.8
+requests==2.33.1
+openpyxl==3.1.5   # only needed for .xlsx input/output
 ```
 
 Install all at once:
 
 ```bash
-pip install numpy scipy pandas scikit-learn matplotlib requests openpyxl
+pip install numpy==2.4.4 scipy==1.17.1 pandas==3.0.2 scikit-learn==1.8.0 matplotlib==3.10.8 requests==2.33.1 openpyxl==3.1.5
 ```
 
 ---
@@ -156,6 +157,43 @@ python extract_coords.py
 - Random jitter delay between requests (15–30 s by default)
 - Realistic browser headers (`Accept`, `Accept-Language`, `Referer`)
 - Rotating User-Agent pool (Chrome, Firefox, Safari)
+
+---
+
+## export_similarity.py
+
+Standalone script to compute, display, and export the N×N pairwise similarity matrix that `adapt_apcluster_script.py` uses internally.
+
+### Parameters
+
+Edit the **PARAMETERS** block at the top of the file:
+
+| Parameter | Default | Description |
+|---|---|---|
+| `input_file` | `'wine.txt'` | Input data file — same file used in `adapt_apcluster_script.py` |
+| `sim_type` | `'euclidean'` | `'euclidean'` = negative Euclidean distance, `'correlation'` = transformed Pearson correlation |
+| `output_file` | `'similarity_matrix.csv'` | Output path; `''` to skip export |
+| `print_limit` | `100` | Max rows/cols to print to console; `0` = print full matrix |
+
+### Running
+
+```bash
+python export_similarity.py
+```
+
+### Output
+
+- **Console** — matrix dimensions, off-diagonal min/max/mean/median, and a preview (or full matrix)
+- **`similarity_matrix.csv`** — full N×N matrix with row and column labels `p1, p2, …`
+
+### Similarity values
+
+| `sim_type` | Formula | Range |
+|---|---|---|
+| `'euclidean'` | `S = −√(Σ(xᵢ−xⱼ)²)` | `(−∞, 0]`; 0 = identical |
+| `'correlation'` | `S = −(0.5 − 0.5·r)` where `r` is Pearson correlation | `[−1, 0]`; 0 = identical |
+
+Diagonal entries are set to `0.0` (the preference is assigned separately by `adapt_apcluster_script.py` before running).
 
 ---
 

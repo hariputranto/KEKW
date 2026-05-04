@@ -11,7 +11,7 @@ from scipy.spatial.distance import cdist
 input_file   = 'wine.txt'              # same file used in adapt_apcluster_script.py
 sim_type     = 'euclidean'             # 'euclidean' | 'correlation'
 output_file  = 'similarity_matrix.csv' # output path; '' to skip export
-print_limit  = 10                      # max rows/cols to print to console (0 = full)
+print_limit  = 100                      # max rows/cols to print to console (0 = full)
 
 # ═════════════════════════════════════════════════════════════════════════════
 # HELPERS

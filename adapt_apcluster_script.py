@@ -351,15 +351,15 @@ def plot_clusters(data, labels, labelid, title='Adaptive AP Clustering',
 # PARAMETERS — edit these before running
 # ═════════════════════════════════════════════════════════════════════════════
 
-data        = load_data('wine.txt')    # supports .csv (auto-detects header) or whitespace .txt
+data        = load_data('clustering_results_table_attr_calc.csv')    # supports .csv (auto-detects header) or whitespace .txt
 dtype       = 'euclidean'              # 'euclidean' | 'correlation'
 pvalues     = None                     # None = median similarity × 0.5; or float/array
 folds       = 0.01                     # preference step factor
 adapt       = 0                        # 0 = adaptive AP (default);  1 = original/searching AP
-maxits      = 5000                     # max iterations
-convits     = 50                       # convergence window
-lam         = 0.5                      # damping factor [0.5, 1.0)
-plot        = False                    # print iteration info
+maxits      = 2000                     # max iterations
+convits     = 50                      # convergence window
+lam         = 0.7                      # damping factor [0.5, 1.0)
+plot        = True                    # print iteration info
 details     = False                    # record per-iteration netsim/dpsim/expref
 nonoise     = False                    # skip noise addition
 cut         = 3                        # minimum cluster size (drop smaller)

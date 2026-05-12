@@ -295,7 +295,7 @@ def plot_clusters_geo(coords, labels, labelid, title='Spatial AP Clustering', sa
 # PARAMETERS — edit these before running
 # ═════════════════════════════════════════════════════════════════════════════
 
-data_file   = 'table_attr_calc.csv'          # CSV with projected coordinate columns
+data_file   = 'Tourism_coord.csv'          # CSV with projected coordinate columns
 x_col       = 'x'               # column name (str) or index (int) for easting / X
 y_col       = 'y'              # column name (str) or index (int) for northing / Y
 sim_type    = 'euclidean'             # 'euclidean' (for UTM/projected) | 'haversine' (for decimal-degree lat/lon)

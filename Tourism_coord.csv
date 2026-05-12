@@ -1,0 +1,391 @@
+﻿OBJECTID,Name,Type,x,y
+1,Camp Kandang Kidang,camp_site,396837.849,9183673.584
+2,Nepal Van Java,attraction,398166.4303,9179662.543
+3,Joglo Jeep,gallery,420400.3838,9160548.045
+4,Taman Rekreasi Kyai Langgeng Kab. Magelang,theme_park,412711.2825,9172731.957
+5,PUNCAK WIDOSARI,attraction,406082.7796,9153435.972
+6,Natural stone,artwork,426271.2336,9156067.146
+7,Sunset viewpoint,viewpoint,413471.5862,9158357.759
+8,EMBUNG TONOGORO,viewpoint,415676.0198,9153345.642
+9,Borobudur Nirwana Sunrise,viewpoint,409279.3321,9159054.442
+10,Preparation area Temple access,attraction,412632.1904,9159066.102
+11,Village Klipoh (Nglipoh),attraction,410056.7085,9158043.508
+12,Mongkrong Hill View,viewpoint,408947.7775,9156015.746
+13,Bukit Rhema (Chicken Church),attraction,409614.0919,9159216.374
+14,Bukit Barede,viewpoint,410059.2888,9159120.806
+15,Punthuk Setumbu Reforestation Project,attraction,409287.929,9159041.036
+16,Peta Borobudur,information,412773.6621,9159116.798
+17,Candi Gunung Wukir,attraction,422440.5946,9156073.713
+18,Informasi Cuaca dari BMKG,information,412690.9563,9159101.047
+19,Peta Lokasi Situs di Kawasan Strategis Nasional Borobudur,information,412089.2075,9158964.905
+20,Bukit Dagi,viewpoint,411784.1181,9159518.924
+21,Borobudur Nirwana Sunrise / Punthuk Setumbu,information,409691.9113,9158642.821
+22,Camping Ground Gunung Andong,camp_site,431278.1925,9183151.046
+23,Gunung Kunir,viewpoint,403603.186,9156284.153
+24,Grojogan Watu Purbo,attraction,427178.3329,9156561.948
+25,ketep pass,viewpoint,431761.3951,9171447.046
+26,Viewpoint Merapi,viewpoint,438934.8281,9174325.638
+27,Gunung Merapi,viewpoint,439023.4329,9166531.394
+28,Pos II,camp_site,439533.9419,9167441.821
+29,Bukit Punthuk Setumbu,picnic_site,409310.8647,9159017.011
+30,Borobudur Highlands,camp_site,405258.3344,9154799.068
+31,Gedong Pass,viewpoint,438624.8501,9180226.306
+32,Campground Pos Pemancar,camp_site,437869.2687,9177298.481
+33,Jembatan Setan,information,438303.7209,9176689.957
+34,HM9,information,437110.9357,9179452.995
+35,Pos Bayangan 1,camp_pitch,436246.6391,9179666.971
+36,Sunrise Camp Puncak Ngratan,camp_site,434233.5299,9185813.025
+37,Pinttu Rimba,information,434288.0325,9174190.519
+38,Balong Camping Ground,camp_site,434159.167,9187333.103
+39,Rest Area,viewpoint,432894.1299,9171442.769
+40,Museum BPK RI,museum,413278.4726,9173763.973
+41,Mangli Sky View,viewpoint,400735.619,9181014.158
+42,NEPAL VAN JAVA Dusun Butuh,artwork,398072.3204,9179669.18
+43,Gerbang Jalur Sejati Gunung Sumbing,information,398111.1783,9180083.452
+44,SILANCUR HIGHLAND,viewpoint,401559.449,9180314.071
+45,Pasar Bubrah,camp_site,439258.3917,9167029.483
+46,Taman Wisata Kopeng,attraction,435909.4412,9182155.703
+47,Puncak Alap-Alap,viewpoint,430920.3867,9183423.273
+48,Camp Area,camp_site,430508.9238,9183113.139
+49,Taman Air Kalibening,attraction,414019.596,9179375.031
+50,Batu Tulis,camp_pitch,437956.139,9176896.507
+51,火山熔岩Gubug Merapi Arum Sari,viewpoint,433617.6988,9160194.064
+52,Candi Umbul,attraction,422423.9096,9186439.88
+53,Pemandian Air Panas Tirta Madu Barokah,attraction,410371.6695,9163193.981
+54,Pemandian Air Panas Ngasinan,attraction,410377.7563,9163296.018
+55,Kali Talang,attraction,440574.6537,9161826.72
+56,Candi Prambanan,attraction,443924.7629,9143083.467
+57,Klangon Hill,viewpoint,439916.1166,9162398.04
+58,Museum Gula,museum,451647.7937,9146499.012
+59,Sunset Temple Viewpoint,viewpoint,444102.7563,9143289.289
+60,Reca Carat,artwork,468139.8912,9152861.124
+61,Titik pandang,viewpoint,439825.8717,9162421.585
+62,R. Mas bagio di umbul ponggok,artwork,459840.6764,9158492.765
+63,Candi Sojiwan,attraction,444440.9603,9142103.153
+64,Prambanan entrance,attraction,444348.1507,9142843.405
+65,Borobudur,attraction,412177.3039,9158962.559
+66,Galeri Unik dan Seni Borobudur,gallery,411918.7119,9159306.343
+67,Desa Wisata Pulesari,camp_site,430738.3657,9157121.474
+68,Museum Kapal Samudraraksa,museum,412124.8641,9159320.123
+69,Candi Pawon,attraction,413913.0515,9159167.286
+70,Gereja Ayam,theme_park,409656.3467,9159208.887
+71,Museum Borobudur,museum,412265.1014,9159385.128
+72,Kandang Gajah,zoo,411894.6544,9159103.734
+73,Pusat Informasi,information,412630.9496,9159053.876
+74,Museum dan Kampung Seni Borobudur,museum,411468.4699,9159481.325
+75,Candi Mendut,attraction,415067.4673,9159315.435
+76,Camp Kandang Kidang,camp_site,396837.849,9183673.584
+77,Nepal Van Java,attraction,398166.4303,9179662.543
+78,Joglo Jeep,gallery,420400.3838,9160548.045
+79,Taman Rekreasi Kyai Langgeng Kab. Magelang,theme_park,412711.2825,9172731.957
+80,PUNCAK WIDOSARI,attraction,406082.7796,9153435.972
+81,Natural stone,artwork,426271.2336,9156067.146
+82,Sunset viewpoint,viewpoint,413471.5862,9158357.759
+83,EMBUNG TONOGORO,viewpoint,415676.0198,9153345.642
+84,Borobudur Nirwana Sunrise,viewpoint,409279.3321,9159054.442
+85,Preparation area Temple access,attraction,412632.1904,9159066.102
+86,Village Klipoh (Nglipoh),attraction,410056.7085,9158043.508
+87,Mongkrong Hill View,viewpoint,408947.7775,9156015.746
+88,Bukit Rhema (Chicken Church),attraction,409614.0919,9159216.374
+89,Bukit Barede,viewpoint,410059.2888,9159120.806
+90,Punthuk Setumbu Reforestation Project,attraction,409287.929,9159041.036
+91,Peta Borobudur,information,412773.6621,9159116.798
+92,Candi Gunung Wukir,attraction,422440.5946,9156073.713
+93,Informasi Cuaca dari BMKG,information,412690.9563,9159101.047
+94,Peta Lokasi Situs di Kawasan Strategis Nasional Borobudur,information,412089.2075,9158964.905
+95,Bukit Dagi,viewpoint,411784.1181,9159518.924
+96,Borobudur Nirwana Sunrise / Punthuk Setumbu,information,409691.9113,9158642.821
+97,Camping Ground Gunung Andong,camp_site,431278.1925,9183151.046
+98,Gunung Kunir,viewpoint,403603.186,9156284.153
+99,Grojogan Watu Purbo,attraction,427178.3329,9156561.948
+100,ketep pass,viewpoint,431761.3951,9171447.046
+101,Viewpoint Merapi,viewpoint,438934.8281,9174325.638
+102,Gunung Merapi,viewpoint,439023.4329,9166531.394
+103,Pos II,camp_site,439533.9419,9167441.821
+104,Bukit Punthuk Setumbu,picnic_site,409310.8647,9159017.011
+105,Borobudur Highlands,camp_site,405258.3344,9154799.068
+106,Gedong Pass,viewpoint,438624.8501,9180226.306
+107,Campground Pos Pemancar,camp_site,437869.2687,9177298.481
+108,Jembatan Setan,information,438303.7209,9176689.957
+109,HM9,information,437110.9357,9179452.995
+110,Pos Bayangan 1,camp_pitch,436246.6391,9179666.971
+111,Sunrise Camp Puncak Ngratan,camp_site,434233.5299,9185813.025
+112,Pinttu Rimba,information,434288.0325,9174190.519
+113,Balong Camping Ground,camp_site,434159.167,9187333.103
+114,Rest Area,viewpoint,432894.1299,9171442.769
+115,Museum BPK RI,museum,413278.4726,9173763.973
+116,Mangli Sky View,viewpoint,400735.619,9181014.158
+117,NEPAL VAN JAVA Dusun Butuh,artwork,398072.3204,9179669.18
+118,Gerbang Jalur Sejati Gunung Sumbing,information,398111.1783,9180083.452
+119,SILANCUR HIGHLAND,viewpoint,401559.449,9180314.071
+120,Pasar Bubrah,camp_site,439258.3917,9167029.483
+121,Taman Wisata Kopeng,attraction,435909.4412,9182155.703
+122,Puncak Alap-Alap,viewpoint,430920.3867,9183423.273
+123,Camp Area,camp_site,430508.9238,9183113.139
+124,Taman Air Kalibening,attraction,414019.596,9179375.031
+125,Batu Tulis,camp_pitch,437956.139,9176896.507
+126,火山熔岩Gubug Merapi Arum Sari,viewpoint,433617.6988,9160194.064
+127,Candi Umbul,attraction,422423.9096,9186439.88
+128,Pemandian Air Panas Tirta Madu Barokah,attraction,410371.6695,9163193.981
+129,Pemandian Air Panas Ngasinan,attraction,410377.7563,9163296.018
+130,Teras Kaca,viewpoint,440749.7802,9103940.862
+131,Laut Bekah,viewpoint,437729.0455,9104910.785
+132,Pantai Kesirat,viewpoint,437763.747,9105001.38
+133,Gunung Suru Sukorini,viewpoint,398066.0519,9130910.198
+134,Bukit Wisata Pulepayung,attraction,403357.9097,9137722.15
+135,Nyi Ageng Serang,artwork,407027.8046,9130484.671
+136,Borobudur Highlands,camp_site,405258.3344,9154799.068
+137,Puncak Goa Jepang,viewpoint,426009.2434,9115537.311
+138,Patung Polisi,artwork,431074.3536,9139652.983
+139,Batik Museum,museum,431349.4242,9138270.177
+140,Galeri Lorong,museum,427603.5043,9135579.608
+141,Bukit Jangkang,viewpoint,403463.9482,9135218.294
+142,Bukit Bego,viewpoint,434198.684,9123859.711
+143,Makam Raja-Raja Mataram Imogiri,viewpoint,433557.8098,9124386.399
+144,Candi Sari,attraction,442025.2215,9142031.899
+145,Candi Sambisari,attraction,439018.5402,9141932.965
+146,Jogja National Museum,museum,428691.7347,9137750.941
+147,Sobowono,camp_site,437267.7465,9155812.512
+148,Grojogan Watu Purbo,attraction,427178.3329,9156561.948
+149,Leksa Ganesha Batik,gallery,428734.5421,9129820.931
+150,Kids Fun,theme_park,438383.6992,9134615.221
+151,Sentra Wayang Kulit - Gendheng,artwork,424260.7722,9133296.545
+152,Kalibiru,viewpoint,404014.8722,9136801.643
+153,Bakpia,information,429484.7976,9137189.689
+154,Museum Istana Yogyakarta,museum,429901.7082,9137655.434
+155,Museum Kampung Hilang,museum,440245.9224,9155676.087
+156,Wana Jonggol,camp_site,437219.7002,9153201.456
+157,"Wisata Wonoasri, Pucang Kembar",viewpoint,436479.2822,9161185.529
+158,The Lost World Castle,viewpoint,439470.814,9159464.324
+159,Viewpoint Lava Solidified Merapi,viewpoint,438774.9464,9161790.845
+160,Petilasan Mbah Marijan Kinahrejo,viewpoint,438680.1373,9161760.818
+161,TPR Plawangan And Goa Japan Ground,picnic_site,436723.6148,9160992.614
+162,Ketep,viewpoint,439075.2148,9161872.806
+163,Gerpang Merapi,camp_site,439236.9521,9161372.21
+164,MerapiLand,camp_site,439118.9127,9161376.173
+165,Bunker Kaliadem,viewpoint,439077.9186,9161811.241
+166,Candi Hati Kudus Yesus,attraction,425033.4262,9123808.124
+167,Lepo Waterfall,attraction,441817.1285,9121156.395
+168,Air Terjun Sri Gethuk,attraction,443743.4559,9121945.358
+169,Seribu Batu Rumah Hobbit,attraction,437300.0617,9123332.484
+170,Hutan Pinus Sari,attraction,437274.8216,9123822.47
+171,Bukit Lintang Sewu,viewpoint,437787.2727,9125075.829
+172,Hutan Pinus Asri,attraction,437770.8574,9124387.361
+173,Hutan Pinus Becici,attraction,437970.6254,9126576.196
+174,Watu Giring,attraction,459049.0981,9116074.32
+175,Jalan Malioboro,information,430111.5085,9138860.47
+176,Hobbit House Merapi,viewpoint,439508.2915,9159450.995
+177,Nara Kupu Village,theme_park,435469.822,9154910.108
+178,Gubug Merapi Arum Sari,viewpoint,433617.6988,9160194.064
+179,Kali Opak 7 Bulan,theme_park,442991.3373,9146103.103
+180,Watulumbung,viewpoint,424901.4654,9116411.375
+181,Galeri Kahangnan,gallery,423276.5766,9131738.819
+182,Puncak Clongop,viewpoint,455472.6596,9135489.644
+183,Puncak Watu Wayang,viewpoint,450498.9561,9133302.961
+184,Puncak Gunung Bagong,viewpoint,449635.9936,9133229.146
+185,Gunung Nglanggeran,camp_site,449556.1281,9133242.934
+186,Puncak Kleco,viewpoint,412543.0436,9147420.831
+187,Gunung Lanang,viewpoint,405219.0278,9143580.005
+188,Candi Kimpulan,information,435532.305,9150040.937
+189,Selfie Park Taman Pule,theme_park,432360.8321,9135924.136
+190,EMBUNG TONOGORO,viewpoint,415676.0198,9153345.642
+191,Obelix Village,attraction,430895.3979,9150168.286
+192,Pintu Masuk Ledok Sambi,theme_park,436874.4187,9154764.747
+193,Tlogo Putri Kaliurang,information,437274.418,9160543.469
+194,BUKIT 94 (Bukit Songo Papat),camp_site,436071.9212,9159971.412
+195,TLCN Jeep Tour Merapi,attraction,438054.4874,9159636.522
+196,Sawah Kerjo,viewpoint,467858.1764,9119185.661
+197,Asram edupark,theme_park,428658.2859,9146338.324
+198,Museum Dewantara Kirti Griya,museum,431468.2011,9137158.679
+199,Museum Sidik Martowidjojo,museum,429760.6467,9136820.59
+200,Blue Lagoon,attraction,439389.5173,9148344.205
+201,Glamping Seribu Batu,camp_site,437306.4952,9123415.476
+202,Suraloka Interactive Zoo,zoo,436145.6313,9159054.721
+203,Museum Perjuangan Yogyakarta,museum,430744.4022,9135939.885
+204,Cemeti - Institute for Art and Society,gallery,429703.5559,9135807.433
+205,Batik and puppet workshop,attraction,429674.8164,9136781.058
+206,Puppet workshop,attraction,429672.1994,9136790.959
+207,"Pulo Kenanga (highest building in Tamansari, ruins)",museum,429499.0635,9136885.202
+208,jogjahydrographic,artwork,429985.2219,9141516.926
+209,Ndalem Joyokusuman,information,429755.4689,9137048.715
+210,Diorama Arsip Jogja,museum,434607.3705,9137725.312
+211,LAV Gallery,artwork,429623.9269,9135637.625
+212,Pesanggrahan Ambarbinangun,camp_site,426794.7472,9136284.054
+213,Bukit Paralayang Watuguprit,viewpoint,427948.6705,9112673.642
+214,Goa Jepang,attraction,426062.2862,9115516.778
+215,Bumi Perkemahan dan Wana Desa Sri Opak,camp_site,428295.153,9119422.851
+216,Puncak Kayangan,viewpoint,426010.7347,9115386.533
+217,Museum Pangeran Diponegoro,museum,428499.8759,9139171.069
+218,Situs Warungboto,attraction,433101.8193,9136619.539
+219,Kebun Buah Mangunan,viewpoint,436603.4243,9122126.864
+220,Bukit Mojo (wooden lookouts),viewpoint,437548.2762,9120515.817
+221,Bukit Panguk Kediwung - sunrise,attraction,438343.7827,9120109.442
+222,Goa Lawa,attraction,450882.973,9112909.884
+223,Luweng Sampang Watery Curtains,attraction,451708.5735,9136787.961
+224,Ruang Mes 56,museum,430197.8472,9135382.997
+225,Batik Kelik,artwork,430512.9584,9134995.325
+226,Tugu Garuda,museum,432254.171,9132522.881
+227,Kaula Leather,artwork,428052.5761,9135654.026
+228,Kalpiko Batik course,artwork,429359.003,9136871.313
+229,Pinnus Pengger,attraction,440373.57,9129900.51
+230,Ardhi M. Imam,information,435474.8561,9137210.125
+231,bale banjar sangkring art space,museum,427569.8109,9136399.618
+232,Plennger Pain Forest,viewpoint,440356.5849,9130060.473
+233,Bukit Tambaling (wood lookouts),viewpoint,436901.0515,9121393.367
+234,Wista watu goyang,viewpoint,435197.5419,9123719.91
+235,Sandboarding Tirto Segoro,attraction,425176.7575,9114026.246
+236,Becici,viewpoint,437656.7389,9126668.483
+237,Mandala Majapahit UGM,museum,431463.1883,9140853.022
+238,Puncak Bucu,viewpoint,438600.0649,9130959.3
+239,Gunungan,artwork,396657.8767,9127683.711
+240,Hamemayu Hayuningrat,artwork,396768.8783,9127994.318
+241,toko boeaya,artwork,435620.6471,9139828.133
+242,jogjahydrographic,artwork,429983.6358,9141515.74
+243,Freedom Batik Art Exposition,museum,429988.7,9138397.592
+244,Gunung Seplawan,viewpoint,402119.9219,9140739.69
+245,Puncak Gunung Gajah,viewpoint,401505.6285,9140214.682
+246,Candi Gebang,attraction,435628.9136,9143137.796
+247,Wisata Alam Kalibiru,viewpoint,403876.84,9137060.187
+248,Museum RS Mata Dr Yap Prawirohusodo,museum,431084.2043,9139896.489
+249,Tugu Udang Wisata Kaliurang,artwork,436797.2676,9159517.708
+250,Nawang Jagad,viewpoint,436241.5913,9160184.48
+251,Elang jawa,artwork,437216.2232,9160539.435
+252,Panorama View,viewpoint,436760.9172,9161063.275
+253,Taman Gardu Pandang,viewpoint,436508.4912,9160663.196
+254,Museum Mini Merapi Sisa Hartaku,museum,439233.4051,9159831.539
+255,Jembatan & Talang Plunyon Kalikuning,viewpoint,437771.1236,9159714.813
+256,Bukit Pronojiwo,viewpoint,437851.756,9160981.932
+257,Bunker Kaliadem,viewpoint,439098.2669,9161771.457
+258,Langgeng Art Foundation,museum,429390.151,9135775.47
+259,Museum UGM,museum,431415.9219,9140654.635
+260,bird market,attraction,428875.9087,9135029.914
+261,RuangDalam Art House,gallery,427442.8833,9135390.723
+262,SURVIVE ! Garage,artwork,427586.7763,9136061.979
+263,Watu Tapak Camp Hill,camp_site,445337.5748,9139998.566
+264,Kalisuci Cave Tubing,attraction,460218.7347,9114600.705
+265,PUNCAK WIDOSARI,attraction,406082.7796,9153435.972
+266,Redbase,gallery,429767.1157,9131714.367
+267,Candi Morangan,viewpoint,441490.6561,9150504.7
+268,Natural stone,artwork,426271.2336,9156067.146
+269,Stonehenge Merapi,attraction,439045.2002,9159629.361
+270,Songgo Langit,viewpoint,437884.385,9123594.393
+271,"Museum Pusat TNI AD ""Dharma Wiratama""",museum,431138.1664,9139702.906
+272,Batu Papal Viewpoint,viewpoint,446920.1323,9138936.352
+273,Candi Ijo,attraction,446173.8889,9139558.676
+274,Bukit Bintang,viewpoint,442641.2663,9132682.317
+275,Tourist Information,information,429802.0317,9138915.338
+276,Kali Talang,attraction,440574.6537,9161826.72
+277,Candi Prambanan,attraction,443924.7629,9143083.467
+278,Klangon Hill,viewpoint,439916.1166,9162398.04
+279,Museum Gula,museum,451647.7937,9146499.012
+280,Sunset Temple Viewpoint,viewpoint,444102.7563,9143289.289
+281,Reca Carat,artwork,468139.8912,9152861.124
+282,Titik pandang,viewpoint,439825.8717,9162421.585
+283,R. Mas bagio di umbul ponggok,artwork,459840.6764,9158492.765
+284,Candi Sojiwan,attraction,444440.9603,9142103.153
+285,Prambanan entrance,attraction,444348.1507,9142843.405
+286,Air  Terjun Curug Silawe,alam,397388.2475,9175475.864
+287,Air Terjun Kedung Kayang,alam,432754.9478,9170904.68
+288,Ketep Pass,alam,431766.714,9171540.584
+289,Air Terjun Sekar langit,alam,429076.2716,9185656.287
+290,Telaga Bleder,alam,427867.0229,9183791.052
+291,Pemandian Air Hangat Candi Umbul,alam,422415.6015,9186437.987
+292,Air Terjun Sumuran Seloprojo,alam,431619.0741,9186250.042
+293,Punthuk Mongkrong,alam,408960.022,9156021.264
+294,Bekas Danau Purba,alam,409216.9879,9160538.206
+295,Agrowisata Desa Borobudur,alam,412703.952,9158376.969
+296,Agrowisata Sentra Nanas Kembanglimus,alam,409762.9129,9160351.352
+297,Agrowisata Honey Bee Garden (Desa Giri Tengah),alam,410295.5656,9156303.565
+298,Susur Sungai Elo,alam,416321.131,9165975.037
+299,Punthuk Mangir Gunung Payung,alam,406663.2946,9170960.915
+301,Saujana Perkampungan Lereng Gunung,alam,412926.416,9157229.816
+302,Bukit Menoreh,alam,400634.7264,9140737.671
+303,Candi Ngawen,budaya,418618.9401,9159392.76
+306,Situs Brongsongan,budaya,410911.2498,9159813.042
+308,Situs Dipan,budaya,412637.6614,9157482.559
+309,Candi Asu Sengi,budaya,428474.2043,9167897.334
+311,Bukit Gunung Gono,budaya,428474.2043,9167897.334
+312,Candi Lumbung,budaya,428395.202,9167790.132
+314,Candi Gunungsari,budaya,420936.8835,9159616.034
+315,Candi Losari,budaya,424662.1811,9155481.323
+316,Candi Selogriyo,budaya,408147.1801,9179222.213
+317,Candi Batur,budaya,408006.2969,9180966.104
+318,Situs Plandi,budaya,413963.2436,9163811.63
+319,Situs Samberan,budaya,410122.9906,9162464.17
+320,Situs Bowongan,budaya,410122.9906,9162464.17
+321,Festival Telaga Bleder,buatan,427859.8357,9183807.747
+327,Festival Kali Elo,buatan,416042.0152,9165758.574
+330,Borobudur Art Center dan Village Healthy Life di Rumah Dharma Wanurejo,buatan,413338.8935,9159536.308
+332,Kampung Dolanan Bumiharjo,buatan,405165.8781,9162993.42
+333,Galeri dan Kerjainan Bambu Kebonsari,buatan,399953.3821,9160372.896
+337,Arena Rekreatif dan Swafoto Svargabumi Ngadiharjo,buatan,412364.2442,9158361.409
+338,Desa Wisata Candirejo,buatan,414935.416,9157111.809
+339,Desa Wisata Wanurejo,buatan,413733.5319,9158539.95
+340,Desa Wisata Karangrejo,buatan,409736.1535,9158592.533
+341,Desa Wisata Borobudur,buatan,412696.8561,9159349.465
+345,Desa Wisata Giritengah,buatan,405955.1002,9156637.318
+346,Desa Wisata Sambeng,buatan,405955.1002,9156637.318
+347,Desa Wisata Ngadiharjo,buatan,408529.5827,9158060.382
+348,Desa Wisata Majaksingi,buatan,408529.5827,9158060.382
+349,Desa Wisata Bigaran,buatan,416428.5082,9154567.971
+351,Desa Wisata Ngargogondo,buatan,416428.5082,9154567.971
+353,Desa Wisata Tuksongo,buatan,412338.2487,9157674.793
+354,Desa Wisata Ngadiharjo,buatan,408046.8519,9158058.602
+355,Desa Wisata Kenalan,buatan,413054.8067,9154868.762
+356,Desa Wisata Tegalarum,buatan,413054.8067,9154868.762
+357,Desa Wisata Kembanglimus,buatan,402078.999,9160155.076
+359,Penyangga Obyek Wisata Gembira Loka,alam,433442.1904,9137104.288
+360,Gethekan Susur Sungai dan Gajah Wong Riverwalk,alam,431280.8197,9134319.571
+361,Puncak Suroloyo,alam,409682.9783,9154717.193
+362,Perkebunan The Nglinggo,alam,403619.1915,9154744.601
+363,Goa Kiskendo,alam,403619.1915,9154744.601
+364,Kalibiru,alam,403673.9828,9136897.736
+366,Kawasan Malioboro-Margamulya,budaya,430065.4391,9138450.521
+367,Kraton Yogyakarta,budaya,430065.4391,9138450.521
+369,Penyangga Obyek Wisata Tamansari dan Kraton Yogyakarta,budaya,429327.544,9136655.468
+370,Ndalem Mangkubumen,budaya,429237.8422,9137095.461
+374,Ndalem Kaneman,budaya,429237.8422,9137095.461
+375,Ndalem Pakuningratan,budaya,429115.8321,9136848.854
+376,Ndalem Joyokusuman,budaya,429558.3205,9136845.59
+378,Istana Gedung Agung,budaya,429864.6571,9137738.672
+379,Masjid Gede Kauman,budaya,429864.6571,9137738.672
+380,Seni Budaya Lokal Ratmakan,budaya,429699.5719,9137326.231
+381,Makam Raja Mataram,budaya,426739.5568,9133719.14
+382,Kraton Kotagede,budaya,433604.7589,9134478.334
+383,Ndalem Kedaton Purbayan,budaya,432773.7336,9134775.032
+384,Cokroyudan Kotagede,budaya,433694.5149,9134362.024
+385,Mbumen Kotagede,budaya,433531.2609,9134681.808
+386,Kemasan Mboharen Kotagede,budaya,433774.3669,9134525.652
+388,Berbagai Seni Pertunjukan dan Hasil Budaya Tradisional Kotagede,budaya,433438.1915,9134839.97
+389,Bangunan Cagar Budaya Ndalem Djoyodipuran,budaya,430371.6143,9136539.853
+393,Penyangga Kawasan Obyek Wisata Kraton Kadipaten Pakualaman,budaya,430141.5464,9137095.158
+395,Museum Puro Pakualaman,budaya,430935.0811,9137651.252
+404,Kuliner Lapangan Karangan,buatan,433404.138,9135237.196
+405,Festival Kipo,buatan,433430.5578,9134743.1
+406,Pusat Kerajinan dan Kuliner XT Square,buatan,432380.9052,9135858.848
+408,Makam Ki Hajar Dewantara,buatan,431916.7211,9137020.069
+411,Museum Sasana Wiratama Pangeran Diponegoro,buatan,431916.7211,9137020.069
+412,Wisata Kuliner Seperti Jamu Ginggang dan Gudeg Permata,buatan,431063.3515,9137669.142
+414,Museum Biologi Universitas Gadjah Mada,buatan,431024.4557,9137555.244
+417,Museum Benteng Vrederburg,buatan,430575.6489,9137806.492
+419,Museum Pusat Angkatan Darat Dharma Wiratama,buatan,431152.4144,9139649.307
+420,Sentra Pembuatan Bakpia Pathuk,buatan,429220.346,9138131.027
+421,Goa Maria Sendangsono,buatan,414584.6351,9152329.522
+422,Agrowisata Bukit Bugisan,alam,445467.0006,9144397.137
+423,Susur Sungai Opak,budaya,431497.1029,9127998.487
+424,Candi Banyunibo,budaya,431497.1029,9127998.487
+425,Candi Barong,budaya,444213.4524,9140214.277
+426,Situs Ratu Boko,budaya,443341.3438,9141031.686
+427,Candi Dawangsari,budaya,444597.0412,9140643.984
+428,Candi Gupolo,budaya,444673.2293,9139345.201
+429,Candi Gana,budaya,444439.8225,9143973.138
+430,Candi Sojiwan,budaya,444183.7384,9142105.335
+431,Candi Kalasan,budaya,441818.6108,9141396.614
+432,Candi Kedulan,budaya,441524.2558,9144125.685
+433,Candi Sari,budaya,442025.1475,9142029.312
+434,Taman Wisata Candi Prambanan,buatan,443926.0647,9143082.926
+436,Gondang Winangoen/Baru Sugar Mill,buatan,451614.2043,9146498.414
+437,Gang soka Kotagede,budaya,433451.7555,9134499.751
+438,Between Two Gates,budaya,433750.5578,9134344.691
+439,Gilang Stone & Gatheng Stone,budaya,433759.4666,9134213.119
+440,Situs Samberan,budaya,408014.3749,9162462.669

@@ -35,11 +35,12 @@ from sklearn.metrics.cluster import contingency_matrix as _sklearn_contingency
 
 def haversine_matrix(coords):
     """
-    Great-circle distance matrix from (N, 2) lat/lon in degrees.
+    Great-circle distance matrix from (N, 2) array of [longitude, latitude] in decimal degrees.
+    coords[:, 0] = longitude (x), coords[:, 1] = latitude (y).
     Returns (N, N) distances in kilometres.
     """
-    lat = np.radians(coords[:, 0])
-    lon = np.radians(coords[:, 1])
+    lon = np.radians(coords[:, 0])   # x column → longitude
+    lat = np.radians(coords[:, 1])   # y column → latitude
     dlat = lat[:, np.newaxis] - lat[np.newaxis, :]
     dlon = lon[:, np.newaxis] - lon[np.newaxis, :]
     a = (np.sin(dlat / 2) ** 2
@@ -212,8 +213,9 @@ def valid_errorate(labels, truelabels):
 
 def load_spatial_data(filepath, x_col, y_col):
     """
-    Load a CSV and return (N, 2) array of [easting, northing] (or any two coordinate columns).
+    Load a CSV and return ((N, 2) coordinate array, full DataFrame).
     x_col / y_col: column name (str) or positional index (int).
+    The full DataFrame is kept so the output CSV can preserve all original columns.
     """
     import pandas as pd
     df = pd.read_csv(filepath)
@@ -221,22 +223,22 @@ def load_spatial_data(filepath, x_col, y_col):
     x = df.iloc[:, x_col].values.astype(float) if isinstance(x_col, int) else df[x_col].values.astype(float)
     y = df.iloc[:, y_col].values.astype(float) if isinstance(y_col, int) else df[y_col].values.astype(float)
 
-    return np.column_stack([x, y])
+    return np.column_stack([x, y]), df
 
 
-def plot_clusters_geo(coords, labels, labelid, title='Spatial AP Clustering', save_path=''):
+def plot_clusters_geo(coords, labels, labelid, crs_type='projected',
+                      title='Spatial AP Clustering', save_path=''):
     """
-    Projected coordinate scatter plot (UTM or any metric CRS).
+    Cluster scatter plot for either coordinate type.
 
-    coords  : (N, 2) [easting, northing] in metres (or any equal-unit CRS)
-    labels  : (N,)  1-based cluster labels
-    labelid : (N,)  1-based exemplar index for each point
-
-    set_aspect('equal') ensures 1 m on x == 1 m on y, so cluster shapes
-    are spatially faithful.
+    coords   : (N, 2) — [easting, northing] for projected; [longitude, latitude] for geographic
+    labels   : (N,)  1-based cluster labels
+    labelid  : (N,)  1-based exemplar index for each point
+    crs_type : 'projected'  → equal aspect (1 m = 1 m), Easting/Northing labels
+               'geographic' → aspect corrected for mid-latitude distortion, Lon/Lat labels
     """
-    x = coords[:, 0]   # easting
-    y = coords[:, 1]   # northing
+    x = coords[:, 0]   # easting  (projected)  or  longitude  (geographic)
+    y = coords[:, 1]   # northing (projected)  or  latitude   (geographic)
 
     K = int(labels.max())
     if K <= 10:
@@ -262,8 +264,18 @@ def plot_clusters_geo(coords, labels, labelid, title='Spatial AP Clustering', sa
         ax.scatter(cx, cy, c=[color], s=260, marker='*',
                    edgecolors='black', linewidths=0.8, zorder=3)
 
-    # Equal aspect: 1 metre on x-axis == 1 metre on y-axis (correct for projected CRS)
-    ax.set_aspect('equal')
+    if crs_type == 'geographic':
+        # Correct for the fact that 1° longitude ≠ 1° latitude in real space
+        mid_lat = float(np.median(y))
+        aspect  = 1.0 / np.cos(np.radians(mid_lat))
+        ax.set_aspect(aspect if np.isfinite(aspect) and aspect > 0 else 'equal')
+        ax.set_xlabel('Longitude (°)')
+        ax.set_ylabel('Latitude (°)')
+    else:
+        # Equal aspect: 1 metre on x == 1 metre on y (correct for any projected metric CRS)
+        ax.set_aspect('equal')
+        ax.set_xlabel('Easting (m)')
+        ax.set_ylabel('Northing (m)')
 
     legend_handles = [
         Line2D([0], [0], marker='o', color='0.4', linestyle='None',
@@ -279,8 +291,6 @@ def plot_clusters_geo(coords, labels, labelid, title='Spatial AP Clustering', sa
             )
     ax.legend(handles=legend_handles, loc='best', fontsize=8, ncol=2 if K > 6 else 1)
 
-    ax.set_xlabel('Easting (m)')
-    ax.set_ylabel('Northing (m)')
     ax.set_title(f'{title}  (K={K})')
     ax.grid(True, alpha=0.3, linestyle='--')
     plt.tight_layout()
@@ -295,10 +305,20 @@ def plot_clusters_geo(coords, labels, labelid, title='Spatial AP Clustering', sa
 # PARAMETERS — edit these before running
 # ═════════════════════════════════════════════════════════════════════════════
 
-data_file   = 'Tourism_coord.csv'          # CSV with projected coordinate columns
-x_col       = 'x'               # column name (str) or index (int) for easting / X
-y_col       = 'y'              # column name (str) or index (int) for northing / Y
-sim_type    = 'euclidean'             # 'euclidean' (for UTM/projected) | 'haversine' (for decimal-degree lat/lon)
+data_file   = 'Tourism_coord.csv'   # path to input CSV
+
+# ── Column mapping ────────────────────────────────────────────────────────────
+x_col       = 'x'   # column for x  →  easting   (projected)  |  longitude  (geographic)
+y_col       = 'y'   # column for y  →  northing  (projected)  |  latitude   (geographic)
+
+# ── Coordinate Reference System ───────────────────────────────────────────────
+#   'projected'  → coordinates are in metres (e.g. UTM); uses Euclidean distance
+#   'geographic' → coordinates are decimal-degree lon/lat (WGS84); uses Haversine distance
+crs_type    = 'projected'
+
+#   UTM-specific: only relevant when crs_type = 'projected'
+utm_zone    = 49    # zone number 1–60
+utm_hemi    = 'S'   # hemisphere: 'N' or 'S'
 
 maxits      = 2000
 convits     = 50                # convergence window — 50 vs script.py's 10
@@ -314,15 +334,27 @@ output_plot = 'ap_spatial_clusters.png'
 # ═════════════════════════════════════════════════════════════════════════════
 
 print(f'==> Loading spatial data from {data_file} ...')
-coords = load_spatial_data(data_file, x_col, y_col)
+coords, df_input = load_spatial_data(data_file, x_col, y_col)
 N = coords.shape[0]
-print(f'    {N} points  '
-      f'X (easting)  [{coords[:,0].min():.2f}, {coords[:,0].max():.2f}]  '
-      f'Y (northing) [{coords[:,1].min():.2f}, {coords[:,1].max():.2f}]')
+
+if crs_type == 'projected':
+    sim_type               = 'euclidean'
+    crs_label              = f'Projected — UTM Zone {utm_zone}{utm_hemi} (metres)'
+    x_label, y_label, unit = 'Easting', 'Northing', 'm'
+    coord_fmt              = '.2f'
+else:
+    sim_type               = 'haversine'
+    crs_label              = 'Geographic — decimal-degree lon/lat (WGS84)'
+    x_label, y_label, unit = 'Longitude', 'Latitude', '°'
+    coord_fmt              = '.6f'
+
+print(f'    {N} points  |  CRS: {crs_label}')
+print(f'    {x_label} [{coords[:,0].min():{coord_fmt}}, {coords[:,0].max():{coord_fmt}}] {unit}  '
+      f'{y_label} [{coords[:,1].min():{coord_fmt}}, {coords[:,1].max():{coord_fmt}}] {unit}')
 
 print(f'\n==> Computing {sim_type} distance matrix ...')
 if sim_type == 'haversine':
-    Dist = haversine_matrix(coords)   # coords must be decimal-degree [lat, lon]
+    Dist = haversine_matrix(coords)
     print(f'    Distance range: [{Dist.min():.3f}, {Dist.max():.3f}] km')
 else:
     Dist = similarity_euclid_linear(coords)
@@ -682,6 +714,7 @@ print(f'\n  Optimal labels (K={NCopt}): {optimal_labels}')
 # ═════════════════════════════════════════════════════════════════════════════
 
 plot_clusters_geo(coords, optimal_labels, optimal_labelid,
+                  crs_type=crs_type,
                   title='Spatial AP Clustering', save_path=output_plot)
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -695,13 +728,10 @@ if output_csv:
     is_centre    = (optimal_labelid - 1) == np.arange(N)
     centre_index = optimal_labelid
 
-    df_out = pd.DataFrame({
-        'latitude':     coords[:, 0],
-        'longitude':    coords[:, 1],
-        'cluster':      optimal_labels,
-        'is_centre':    is_centre,
-        'centre_index': centre_index,
-    })
+    df_out = df_input.copy()
+    df_out['cluster']      = optimal_labels
+    df_out['is_centre']    = is_centre
+    df_out['centre_index'] = centre_index
     df_out.index.name = 'point_index'
     df_out.to_csv(output_csv)
     print(f'\n## Results saved to: {os.path.abspath(output_csv)}')

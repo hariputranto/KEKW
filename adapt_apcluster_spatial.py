@@ -320,14 +320,14 @@ crs_type    = 'projected'
 utm_zone    = 49    # zone number 1–60
 utm_hemi    = 'S'   # hemisphere: 'N' or 'S'
 
-maxits      = 2000
+maxits      = 10000
 convits     = 50                # convergence window — 50 vs script.py's 10
 lam         = 0.7               # damping factor [0.5, 1.0)
 folds       = 0.01              # preference step factor
 cut         = 1                 # min cluster size; 1 = allow singletons
 truelabels  = None              # (N,) true labels for validation, or None
-output_csv  = 'ap_spatial_results.csv'
-output_plot = 'ap_spatial_clusters.png'
+output_csv  = 'Tourism_coord_output.csv'
+output_plot = 'Tourism_coord_output.png'
 
 # ═════════════════════════════════════════════════════════════════════════════
 # STEP 1 — LOAD DATA & BUILD SIMILARITY MATRIX

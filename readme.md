@@ -13,9 +13,12 @@ K. Wang, J. Zhang, D. Li, X. Zhang and T. Guo. *Adaptive Affinity Propagation Cl
 | File | Description |
 |---|---|
 | `adapt_apcluster.py` | Importable module — core algorithm only |
-| `adapt_apcluster_script.py` | Standalone script — full pipeline with CSV input, visualization, and result export |
-| `extract_coords.py` | Utility script — extracts lat/long from Google Maps links in a CSV/Excel file |
-| `export_similarity.py` | Utility script — computes and exports the N×N similarity matrix |
+| `adapt_apcluster_script.py` | Standalone script — general-purpose pipeline with CSV input, visualisation, and result export |
+| `adapt_apcluster_nofunc.py` | Sequential (no-function) version of the script — reference implementation used for comparison |
+| `adapt_apcluster_spatial.py` | Spatial clustering script — optimised for projected (UTM) or geographic (lon/lat) coordinate data |
+| `spatial_outlier_detect.py` | Spatial outlier detection — LOF, k-NN distance, and DBSCAN noise detection on coordinate data |
+| `extract_coords.py` | Utility — extracts lat/long from Google Maps links in a CSV/Excel file |
+| `export_similarity.py` | Utility — computes and exports the N×N similarity matrix |
 | `adapt_apcluster.m` | Original MATLAB source |
 | `wine.txt` / `ionosphere.txt` | Demo datasets |
 
@@ -194,6 +197,105 @@ python export_similarity.py
 | `'correlation'` | `S = −(0.5 − 0.5·r)` where `r` is Pearson correlation | `[−1, 0]`; 0 = identical |
 
 Diagonal entries are set to `0.0` (the preference is assigned separately by `adapt_apcluster_script.py` before running).
+
+---
+
+## adapt_apcluster_spatial.py
+
+Spatial clustering pipeline — a copy of `adapt_apcluster_script.py` optimised for geographic point data. Edit the **PARAMETERS** block before running.
+
+**Key differences from `adapt_apcluster_script.py`:**
+
+| Aspect | `script.py` | `spatial.py` |
+|---|---|---|
+| Distance | Squared Euclidean | Linear Euclidean (projected) or Haversine (geographic) |
+| Initial preference | `pmedian × 0.5` | `pmedian` |
+| Convergence window | 10 | 50 |
+| Kvar escape step | `2 · √std` | `2 · std` (bolder) |
+| Min cluster size | 3 | 1 |
+| Plot aspect | arbitrary | `equal` (projected) or lat-corrected (geographic) |
+
+### Parameters
+
+| Parameter | Default | Description |
+|---|---|---|
+| `data_file` | `'your_data.csv'` | Path to input CSV |
+| `x_col` | `'x'` | Column for easting (projected) or longitude (geographic) |
+| `y_col` | `'y'` | Column for northing (projected) or latitude (geographic) |
+| `crs_type` | `'projected'` | `'projected'` = UTM metres · `'geographic'` = decimal-degree lon/lat |
+| `utm_zone` | `49` | UTM zone number 1–60; only used when `crs_type = 'projected'` |
+| `utm_hemi` | `'S'` | `'N'` or `'S'`; only used when `crs_type = 'projected'` |
+| `maxits` | `2000` | Maximum iterations |
+| `convits` | `50` | Convergence window |
+| `lam` | `0.7` | Initial damping factor |
+| `folds` | `0.01` | Preference step factor |
+| `cut` | `1` | Minimum cluster size (1 = allow singletons) |
+| `truelabels` | `None` | True labels for validation, or `None` |
+| `output_csv` | `'ap_spatial_results.csv'` | Output CSV path; `''` to skip |
+| `output_plot` | `'ap_spatial_clusters.png'` | Output plot path; `''` to skip |
+
+### Running
+
+```bash
+python adapt_apcluster_spatial.py
+```
+
+### Output
+
+- **Console** — CRS info, distance range, per-iteration progress, Silhouette table
+- **`ap_spatial_results.csv`** — all original columns preserved, plus `cluster`, `is_centre`, `centre_index`
+- **`ap_spatial_clusters.png`** — geographic scatter plot with cluster members, exemplar centres (stars), and connecting spokes
+
+---
+
+## spatial_outlier_detect.py
+
+Spatial outlier detection using three complementary methods. Edit the **PARAMETERS** block before running.
+
+### Methods
+
+| Method | What it detects |
+|---|---|
+| `lof` | Points in a locally sparse neighbourhood surrounded by denser areas (density contrast) |
+| `knn` | Points absolutely far from their k-th nearest neighbour (geographic isolation) |
+| `dbscan` | Points unreachable by any core point — DBSCAN noise label −1 (no cluster membership) |
+
+Using all three methods and setting `vote_thresh` controls sensitivity: `1` = any method flags; `3` = unanimous agreement only.
+
+### Parameters
+
+| Parameter | Default | Description |
+|---|---|---|
+| `data_file` | `'your_data.csv'` | Path to input CSV |
+| `x_col` | `'x'` | Column for easting or longitude |
+| `y_col` | `'y'` | Column for northing or latitude |
+| `crs_type` | `'projected'` | `'projected'` (UTM) or `'geographic'` (lon/lat) |
+| `utm_zone` | `49` | UTM zone; only used when `crs_type = 'projected'` |
+| `utm_hemi` | `'S'` | Hemisphere; only used when `crs_type = 'projected'` |
+| `methods` | `['lof','knn','dbscan']` | Any subset of the three methods |
+| `lof_k` | `20` | LOF neighbourhood size |
+| `lof_thresh` | `1.5` | LOF score threshold for flagging |
+| `knn_k` | `5` | k-th neighbour distance used as the score |
+| `knn_thresh` | `None` | Auto: mean + 3σ of all k-NN distances |
+| `dbscan_eps` | `None` | Auto: 95th-percentile of k-NN distances |
+| `dbscan_minpts` | `5` | Minimum points to form a core point |
+| `vote_thresh` | `1` | Minimum method votes to mark a point as outlier |
+| `output_csv` | `'spatial_outliers.csv'` | Output CSV path; `''` to skip |
+| `output_plot` | `'spatial_outliers.png'` | Output map path; `''` to skip |
+| `output_kdist_plot` | `'kdist_plot.png'` | k-distance elbow plot to help choose `dbscan_eps`; `''` to skip |
+
+### Running
+
+```bash
+python spatial_outlier_detect.py
+```
+
+### Output
+
+- **Console** — flagged count per method, outlier index table with coordinates
+- **`spatial_outliers.csv`** — all original columns preserved, plus `lof_score`, `knn_dist`, `dbscan_label`, `outlier_votes`, `is_outlier`
+- **`spatial_outliers.png`** — geographic scatter plot with outliers marked as red X, annotated with vote count
+- **`kdist_plot.png`** — sorted k-distance elbow plot with the auto eps threshold marked; use this to manually tune `dbscan_eps`
 
 ---
 
